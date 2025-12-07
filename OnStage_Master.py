@@ -27,7 +27,6 @@ class Point:
     def __str__(self):
         return f"Point({self.x}, {self.y})"
 
-#
 class robot:
     def __init__(self, IP, port, x, y, tag):
         self.IP = IP;
@@ -54,7 +53,6 @@ class robot:
         if(atTarget):
             self.state = states[(states.index(self.state)+1)%len(states)]
 
-#
 class plant:
     def __init__(self, IP, port, level, x, y):
         self.IP = IP;
@@ -63,7 +61,6 @@ class plant:
         self.x = x
         self.y = y
         
-
 robots = [robot("192.168.32.172", 5000, 0, 0, 0), robot("192.168.32.172", 5000, 0, 0, 1), robot("192.168.32.172", 5000, 0, 0, 2)]
 plants = [plant("<INSERT IP HERE>", 0, 0, 0, 0)]
 
