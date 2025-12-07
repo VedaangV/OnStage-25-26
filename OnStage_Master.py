@@ -1,17 +1,19 @@
+### import libraries ###
 import cv2
 import socket
 import time
 import apriltag
 import math
 import numpy as np
+
+### setup camera ###
 cap = cv2.VideoCapture(0)  # 0 = default USB webcam
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
-
 states = ["plant", "ice", "mining"]
 
-
+### objects ###
 class Point:
     def __init__(self, x, y):
         self.x = x
@@ -24,8 +26,8 @@ class Point:
 
     def __str__(self):
         return f"Point({self.x}, {self.y})"
-    
-    
+
+#
 class robot:
     def __init__(self, IP, port, x, y, tag):
         self.IP = IP;
@@ -51,9 +53,8 @@ class robot:
     def changeState():
         if(atTarget):
             self.state = states[(states.index(self.state)+1)%len(states)]
-            
-        
-        
+
+#
 class plant:
     def __init__(self, IP, port, level, x, y):
         self.IP = IP;
