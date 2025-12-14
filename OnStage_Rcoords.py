@@ -36,6 +36,20 @@ class robot:
 robots = [robot("192.168.32.172", 5000, 0, 0, 2), robot("192.168.32.172", 5000, 0, 0, 3)]
 anchors = [Point(0, 0), Point(0, 0)]
 
+### functions ###
+def displayTag(ptA, ptB, ptC, ptD, cX, cY):
+    # draw bounding box
+    cv2.line(rgb, ptA, ptB, (0, 255, 0), 2)
+    cv2.line(rgb, ptB, ptC, (0, 255, 0), 2)
+    cv2.line(rgb, ptC, ptD, (0, 255, 0), 2)
+    cv2.line(rgb, ptD, ptA, (0, 255, 0), 2)
+    # draw center
+    cv2.circle(rgb, (cX, cY), 5, (0, 0, 255), -1)
+    # draw tag family
+    tagFamily = r.tag_family.decode("utf-8")
+    cv2.putText(rgb, (str(r.tag_id) + " " + tagFamily), (ptA[0], ptA[1] - 15),
+        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
 ### setup picam ###
 picam2 = Picamera2()
 config = picam2.create_preview_configuration(lores={"size": (640, 480)})   #(640, 480)
@@ -71,18 +85,8 @@ while True:
             ptC = (int(ptC[0]), int(ptC[1]))
             ptD = (int(ptD[0]), int(ptD[1]))
             ptA = (int(ptA[0]), int(ptA[1]))
-            # draw bounding box
-            cv2.line(rgb, ptA, ptB, (0, 255, 0), 2)
-            cv2.line(rgb, ptB, ptC, (0, 255, 0), 2)
-            cv2.line(rgb, ptC, ptD, (0, 255, 0), 2)
-            cv2.line(rgb, ptD, ptA, (0, 255, 0), 2)
-            # draw center
             (cX, cY) = (int(r.center[0]), int(r.center[1]))
-            cv2.circle(rgb, (cX, cY), 5, (0, 0, 255), -1)
-            # draw tag family
-            tagFamily = r.tag_family.decode("utf-8")
-            cv2.putText(rgb, (str(r.tag_id) + " " + tagFamily), (ptA[0], ptA[1] - 15),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            displayTag(ptA, ptB, ptC, ptD, cX, cY)
     
     ### display edited image ###
     cv2.imshow("Camera", rgb)
@@ -101,7 +105,7 @@ while True:
     options = apriltag.DetectorOptions(families="tag36h11")
     detector = apriltag.Detector(options)
     results = detector.detect(gray)
-    
+
     for r in results:
         if r.tag_id >= 2 and r.tag_id <= 3:
             robots[r.tag_id-2].coords = Point((abs(anchors[0].x - r.center[0]) / abs(anchors[0].x - anchors[1].x)), (abs(anchors[0].y - r.center[1]) / abs(anchors[0].y - anchors[1].y)))
@@ -117,18 +121,8 @@ while True:
             ptC = (int(ptC[0]), int(ptC[1]))
             ptD = (int(ptD[0]), int(ptD[1]))
             ptA = (int(ptA[0]), int(ptA[1]))
-            # draw lines
-            cv2.line(rgb, ptA, ptB, (0, 255, 0), 2)
-            cv2.line(rgb, ptB, ptC, (0, 255, 0), 2)
-            cv2.line(rgb, ptC, ptD, (0, 255, 0), 2)
-            cv2.line(rgb, ptD, ptA, (0, 255, 0), 2)
-            # draw center
             (cX, cY) = (int(r.center[0]), int(r.center[1]))
-            cv2.circle(rgb, (cX, cY), 5, (0, 0, 255), -1)
-            # draw tag family
-            tagFamily = r.tag_family.decode("utf-8")
-            cv2.putText(rgb, (str(r.tag_id) + " " + tagFamily), (ptA[0], ptA[1] - 15),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            displayTag(ptA, ptB, ptC, ptD, cX, cY)
     
     ### display edited image ###
     cv2.imshow("Camera", rgb)
@@ -138,6 +132,3 @@ while True:
 
 cv2.destroyAllWindows()
 picam2.stop()
-
-
-
