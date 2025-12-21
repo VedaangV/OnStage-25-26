@@ -6,9 +6,9 @@ import numpy as np
 import copy
 import math
 
-from picamera2 import Picamera2
 
-module_dir = os.path.abspath('/home/pi/onstage/python/apriltag/lib/python3.11/site-packages')
+
+module_dir = os.path.abspath('/home/vedaang/.local/lib/python3.10/site-packages')
 sys.path.append(module_dir)
 import apriltag
 
@@ -51,14 +51,21 @@ def displayTag(ptA, ptB, ptC, ptD, cX, cY):
         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
 ### setup picam ###
+    '''
 picam2 = Picamera2()
 config = picam2.create_preview_configuration(lores={"size": (640, 480)})   #(640, 480)
 picam2.configure(config)
 picam2.start()
+'''
+
+cap = cv2.VideoCapture(0)  # 0 = default USB webcam
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
 ## adjust camera, set anchor coords ###
 while True:
-    yuv420 = picam2.capture_array("lores")
+    ret, frame = cap.read()
+    yuv420 = frame
     rgb = cv2.cvtColor(yuv420, cv2.COLOR_YUV420p2RGB)
     gray = cv2.cvtColor(yuv420, cv2.COLOR_YUV420p2GRAY)
     
@@ -97,7 +104,7 @@ while True:
 ### get robot coords ###
 while True:
     ### get image as RGB and GRAY ###
-    yuv420 = picam2.capture_array("lores")
+    yuv420 = frame
     rgb = cv2.cvtColor(yuv420, cv2.COLOR_YUV420p2RGB)
     gray = cv2.cvtColor(yuv420, cv2.COLOR_YUV420p2GRAY)
     
@@ -129,6 +136,9 @@ while True:
     
     if cv2.waitKey(1) & 0xFF == ord('q'): 
         break
+
+def updatePositions:
+    pass
 
 cv2.destroyAllWindows()
 picam2.stop()

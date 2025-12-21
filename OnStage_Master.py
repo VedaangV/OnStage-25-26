@@ -6,6 +6,11 @@ import apriltag
 import math
 import numpy as np
 
+from CBF import drive
+from OnStage_Rcoords import updatePositions
+from WifiComms import write, read
+
+
 ### setup camera ###
 cap = cv2.VideoCapture(0)  # 0 = default USB webcam
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
@@ -63,75 +68,29 @@ class plant:
         
 robots = [robot("192.168.32.172", 5000, 0, 0, 0), robot("192.168.32.172", 5000, 0, 0, 1), robot("192.168.32.172", 5000, 0, 0, 2)]
 plants = [plant("<INSERT IP HERE>", 0, 0, 0, 0)]
-
+obstacles = []
 
 sockets = []
-'''
-for robot in robots:
-    sockets.append(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
-    sockets[-1].connect((robot.IP, robot.port))
-    '''
-def write(robot, string):
-    sockets[robot].send(string.encode())
+
+def connect():
+    for robot in robots:
+        sockets.append(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
+        sockets[-1].connect((robot.IP, robot.port))
     
-def read(robot):
-    return sockets[robot].recv(1024).decode().strip()
 
-def updatePositions():
-    #updates x and y for each robot and plant based on April Tags
-    options = apriltag.DetectorOptions(families="tag36h11")
-    detector = apriltag.Detector(options)
-    
-    ret, frame = cap.read()
-    if not ret:
-        print("Failed to grab frame")
-        return
-
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-   
-    # Detect AprilTags
-    results = detector.detect(gray)
-    print("[INFO] {} AprilTags detected".format(len(results)))
-
-    for r in results:
-        # Extract corners
-        (ptA, ptB, ptC, ptD) = r.corners
-        ptA = tuple(map(int, ptA))
-        ptB = tuple(map(int, ptB))
-        ptC = tuple(map(int, ptC))
-        ptD = tuple(map(int, ptD))
-
-        # Draw bounding box
-        cv2.line(frame, ptA, ptB, (0, 255, 0), 2)
-        cv2.line(frame, ptB, ptC, (0, 255, 0), 2)
-        cv2.line(frame, ptC, ptD, (0, 255, 0), 2)
-        cv2.line(frame, ptD, ptA, (0, 255, 0), 2)
-
-        # Draw center
-        cX, cY = map(int, r.center)
-        cv2.circle(frame, (cX, cY), 5, (0, 0, 255), -1)
-
-        # Draw tag ID
-        tagFamily = r.tag_family.decode("utf-8")
-        #cv2.putText(frame, f"{r.tag_id} {tagFamily}", (ptA[0], ptA[1]-10),
-                    #cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        print(f"\ttag_id: {r.tag_id}, tag_family: {tagFamily}")
-        ID = min(r.tag_id, 2)
-        if(ID < 10 ):
-            robots[ID].updatePosition(cX, cY)
-        else:
-            plants[ID-10].updatePosition(cX, cY)
-    # Show the image
-    #cv2.imshow("AprilTag Detection", frame)
-
-    # Press 'q' to quit
 
 
 if __name__ == "__main__":
     while True:
-        updatePositions();
-        for robot in robots:
-            print(f"robot {robot.tag}: ({robot.x}, {robot.y})")
+        for idx in range(len(robots)):
+            robot = robots[idx]
+            robot.changeState()
+            velocity = drive(robot, np.array(robot.targetX, robot.targetY), obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10)
+            write(sockets[idx], "vx: " + velocity[0] + ", vy: " + velocity[1])
+        updatePositions()
+        
+        
+        
     
     
     
