@@ -1,5 +1,6 @@
 //libraries
 #include <Arduino.h>
+#include <cmath>
 
 //motor init prototypes
 int cmap(int);
@@ -15,5 +16,3 @@ extern Motor Lmotor;
 extern Motor Rmotor;
 
 void motor(int, int, int);
-
-
