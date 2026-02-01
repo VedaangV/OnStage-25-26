@@ -2,14 +2,10 @@
 import numpy as np
 import math
 
+### import subfiles ###
 from CBF import drive
 from OnStage_Rcoords import updatePositions
 from WifiComms import write, read
-
-### setup camera ###
-cap = cv2.VideoCapture(0)  # 0 = default USB webcam
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
 states = ["plant", "ice", "mining"]
 
@@ -85,7 +81,8 @@ def connect():
     for robot in robots:
         sockets.append(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
         sockets[-1].connect((robot.IP, robot.port))
-    
+
+### main ###
 if __name__ == "__main__":
     while True:
         for idx in range(len(robots)):
