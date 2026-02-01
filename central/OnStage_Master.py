@@ -92,6 +92,7 @@ if __name__ == "__main__":
             write(sockets[idx], "vx: " + velocity[0] + ", vy: " + velocity[1])
         updatePositions()
         
+#Point(field_width*(abs(anchors[0].x - r.center[0]) / abs(anchors[0].x - anchors[1].x)), field_length*(abs(anchors[0].y - r.center[1]) / abs(anchors[0].y - anchors[1].y)))
         
         
     
