@@ -1,14 +1,18 @@
 ### INFO ###
 # install apriltag library by creating a virtual environment and pip install
-# make sure to change module_dir to match path where library is located
+# make sure to change "module_dir" to match path where library is located
+
+# change "camera_type" to match camera being used e.x. "picam", "ausdom", "logitech"...
+# change "camera_port" to match camera usb port
+#    can be checked using linux commands
+#    sudo apt install v4l-utils
+#    v4l2-ctl --list-devices
 
 ### import libraries ###
 import sys
 import os
 import cv2
 import numpy as np
-import copy
-import math
 
 from picamera2 import Picamera2
 
@@ -16,6 +20,7 @@ module_dir = os.path.abspath('/home/pi/onstage/python/apriltag/lib/python3.11/si
 sys.path.append(module_dir)
 import apriltag
 
+### objects ###
 class Point:
     def __init__(self, x, y):
         self.x = x
@@ -23,41 +28,41 @@ class Point:
 
     def __array__(self) -> np.ndarray:
         return np.array([self.x, self.y])
+    
+### setup camera ###
+camera_type = "ausdom"
+camera_port = 8;
 
-### setup picam ###
-picam2 = Picamera2()
-config = picam2.create_preview_configuration(lores={"size": (640, 480)})   #(640, 480)
-picam2.configure(config)
-picam2.start()
+if camera_type == "picam":
+    cam = Picamera2()
+    config = cam.create_preview_configuration(lores={"size": (640, 480)})   #(640, 480)
+    cam.configure(config)
+    cam.start()
+else:
+    cam = cv2.VideoCapture(camera_port)
+    if not cam.isOpened():
+        print("Failed to open camera")
+        exit()
 
+### main ###
 while True:
     ### get image as RGB and GRAY ###
-    yuv420 = picam2.capture_array("lores")
-    rgb = cv2.cvtColor(yuv420, cv2.COLOR_YUV420p2RGB)
-    gray = cv2.cvtColor(yuv420, cv2.COLOR_YUV420p2GRAY)
+    if camera_type == "picam":
+        yuv420 = cam.capture_array("lores")
+        rgb = cv2.cvtColor(yuv420, cv2.COLOR_YUV420p2RGB)
+        gray = cv2.cvtColor(yuv420, cv2.COLOR_YUV420p2GRAY)
+    else:
+        ret, frame = cam.read()
+        if not ret:
+            print("Failed to get camera frame")
+            break
+        rgb = frame
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
     ### get results of AT detection ###
     options = apriltag.DetectorOptions(families="tag36h11")
     detector = apriltag.Detector(options)
     results = detector.detect(gray)
-    #print("[INFO] {} total AprilTags detected".format(len(results)))
-    
-    ### get coords of robot relative to cam ###
-    anchors = [Point(-1, -1), Point(-1, -1)]
-    robotsI = []
-    for r in results:
-        if r.tag_id >= 0 and r.tag_id <= 1:
-            anchors[r.tag_id] = Point(r.center[0], r.center[1])
-        else: #else:
-            robotsI.append(Point(r.center[0], r.center[1]))
-    
-    ## convert coords to be relative to anchors ###
-    robotsR = []
-    for index, robot in enumerate(robotsI):
-        if (anchors[0].x != -1 and anchors[0].y != -1 and anchors[1].x != -1 and anchors[1].y != -1):
-            robotsR.append(Point((abs(anchors[0].x - robot.x) / abs(anchors[0].x - anchors[1].x)), (abs(anchors[0].y - robot.y) / abs(anchors[0].y - anchors[1].y))))
-            print("Robot " + str(index) + " relative coords: " + str(robotsR[index].x) + ", " + str(robotsR[index].y))
-    print("\n")
    
     ### draw bounding boxes and info of ATs ###
     for r in results:
@@ -79,7 +84,6 @@ while True:
         tagFamily = r.tag_family.decode("utf-8")
         cv2.putText(rgb, (str(r.tag_id) + " " + tagFamily), (ptA[0], ptA[1] - 15),
             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        #print("\ttag_id: " + str(r.tag_id) + ", tag_family: {}".format(tagFamily))
     
     ### display edited image ###
     cv2.imshow("Camera", rgb)
@@ -88,4 +92,7 @@ while True:
         break
 
 cv2.destroyAllWindows()
-picam2.stop()
+if camera_type == "picam":
+    cam.stop()
+else:
+    cam.release()
