@@ -31,17 +31,12 @@ class robot:
     def __init__(self, IP, port, x, y, tag):
         self.IP = IP;
         self.port = port
-        self.x = x
-        self.y = x
+        self.coords = Point(x, y)
         self.water_level = 1
-        self.state = "plant"
+        self.state = "none"
         self.tag = tag;
-    def updatePosition(self, x, y):
-        self.x = x
-        self.y=y
     def setTarget(x, y):
-        self.targetX = x
-        self.targetY = y
+        self.target = Point(x, y)
     def depleteWater():
         self.water_level -= 1
     def restoreWater():
@@ -49,21 +44,40 @@ class robot:
     def atTarget():
         return (math.sqrt((self.x-self.targetX)**2 + (self.y-self.targetY)**2) < 0.5)
     
-    def changeState():
-        if(atTarget):
-            self.state = states[(states.index(self.state)+1)%len(states)]
+    def setState(int s): #set state manually
+        self.state = states[s]
+    def action(): #change state after completing current task
+        if (self.atTarget == True):
+            self.changeWater()
+            for i in range(4):
+                if (self.state == states[i]):
+                    self.state == states[(i + 1) % 4]
+
+class obstacle:
+    def __init(self, x, y, radius):
+        self.coords = Point(x, y)
+        self.radius = radius
 
 class plant:
-    def __init__(self, IP, port, level, x, y):
+    def __init__(self, IP, port, x, y, level):
         self.IP = IP;
         self.port = port
+        self.coords = Point(x,y)
         self.level = level
-        self.x = x
-        self.y = y
         
-robots = [robot("192.168.32.172", 5000, 0, 0, 0), robot("192.168.32.172", 5000, 0, 0, 1), robot("192.168.32.172", 5000, 0, 0, 2)]
+class ice:
+    def __init__(self, x, y, level):
+        self.coords = Point(x,y)
+        self.level = level
+
+robots = [robot("192.168.32.172", 5000, 0, 0, 2), robot("192.168.32.172", 5000, 0, 0, 3)] 
+anchors = [Point(0, 0), Point(0, 0)]  #AT tag 0 and 1 respectively
+obstacles = [obstacle(0, 0, 0), obstacle(0, 0, 0), obstacle(0, 0, 0)]
 plants = [plant("<INSERT IP HERE>", 0, 0, 0, 0)]
-obstacles = []
+
+field_width = 1  #scales x dimension of relative coordinates
+field_length = 1  #scales y dimension of relative coordinates
+robotcount = 2  #predefined number of robots (prevent detection of extraneous tags)
 
 sockets = []
 
@@ -72,9 +86,6 @@ def connect():
         sockets.append(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
         sockets[-1].connect((robot.IP, robot.port))
     
-
-
-
 if __name__ == "__main__":
     while True:
         for idx in range(len(robots)):
