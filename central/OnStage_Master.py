@@ -1,15 +1,10 @@
 ### import libraries ###
-import cv2
-import socket
-import time
-import apriltag
-import math
 import numpy as np
+import math
 
 from CBF import drive
 from OnStage_Rcoords import updatePositions
 from WifiComms import write, read
-
 
 ### setup camera ###
 cap = cv2.VideoCapture(0)  # 0 = default USB webcam
