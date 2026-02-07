@@ -3,7 +3,7 @@ import numpy as np
 import math
 
 ### import subfiles ###
-from CBF import drive
+from CBF import get_velocity
 from OnStage_Rcoords import updatePositions
 from WifiComms import write, read
 
