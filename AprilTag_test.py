@@ -7,6 +7,7 @@
 #    can be checked using linux commands
 #    sudo apt install v4l-utils
 #    v4l2-ctl --list-devices
+# tune additional camera values depending on testing environment (camera_brightness, camera_contrast...)
 
 ### import libraries ###
 import sys
@@ -20,6 +21,31 @@ module_dir = os.path.abspath('/home/pi/onstage/python/apriltag/lib/python3.11/si
 sys.path.append(module_dir)
 import apriltag
 
+### functions ###
+def apply_imgfx(input_img, brightness = 0, contrast = 0):
+    if brightness != 0:
+        if brightness > 0:
+            shadow = brightness
+            highlight = 255
+        else:
+            shadow = 0
+            highlight = 255 + brightness
+        alpha_b = (highlight - shadow)/255
+        gamma_b = shadow
+        
+        buf = cv2.addWeighted(input_img, alpha_b, input_img, 0, gamma_b)
+    else:
+        buf = input_img.copy()
+    
+    if contrast != 0:
+        f = 131*(contrast + 127)/(127*(131-contrast))
+        alpha_c = f
+        gamma_c = 127*(1-f)
+        
+        buf = cv2.addWeighted(buf, alpha_c, buf, 0, gamma_c)
+
+    return buf
+
 ### objects ###
 class Point:
     def __init__(self, x, y):
@@ -31,15 +57,20 @@ class Point:
     
 ### setup camera ###
 camera_type = "ausdom"
-camera_port = 8;
+camera_port = 8
+camera_width = 640; camera_height = 480
+camera_brightness = 0; camera_contrast = 0
 
 if camera_type == "picam":
     cam = Picamera2()
-    config = cam.create_preview_configuration(lores={"size": (640, 480)})   #(640, 480)
+    config = cam.create_preview_configuration(lores={"size": (camera_width, camera_height)}) #(640, 480)
     cam.configure(config)
     cam.start()
 else:
     cam = cv2.VideoCapture(camera_port)
+    cam.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
+    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
+    cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
     if not cam.isOpened():
         print("Failed to open camera")
         exit()
@@ -56,6 +87,7 @@ while True:
         if not ret:
             print("Failed to get camera frame")
             break
+        frame = apply_imgfx(frame, camera_brightness, camera_contrast) 
         rgb = frame
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
