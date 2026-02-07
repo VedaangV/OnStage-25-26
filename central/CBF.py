@@ -1,55 +1,15 @@
 import random
 import math
 import numpy as np
-class Point:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-    
-    def distance_to(self, other_point):
-        dx = self.x - other_point.x
-        dy = self.y - other_point.y
-        return math.sqrt(dx**2 + dy**2)
 
-    def __str__(self):
-        return f"Point({self.x}, {self.y})"
-   
-   
-class robot:
-    def __init__(self, IP, port, x, y, tag):
-        self.IP = IP;
-        self.port = port
-        self.x = x
-        self.y = x
-        self.water_level = 1
-        self.state = "plant"
-        self.tag = tag;
-    def updatePosition(self, x, y):
-        self.x = x
-        self.y=y
-    def setTarget(x, y):
-        self.targetX = x
-        self.targetY = y
-    def depleteWater():
-        self.water_level -= 1
-    def restoreWater():
-        self.water_level += 1
-    def atTarget():
-        return (math.sqrt((self.x-self.targetX)**2 + (self.y-self.targetY)**2) < 0.5)
-    
-    def changeState():
-        if(atTarget):
-            self.state = states[(states.index(self.state)+1)%len(states)]
-            
-        
+from Onstage_Master import Point
+from Onstage_Master import robot
 
-
-def drive(bot, target, obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10):
+def get_velocity(bot, target, obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10):
             #nominal controller
         v_nom = 1.0
         dir = target - np.array(bot.x, bot.y)
         dist = np.linalg.norm(dir)
-        
         
         if dist > 1e-6:
             v_nom = speed * dir/dist
