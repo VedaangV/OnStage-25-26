@@ -27,7 +27,8 @@ class robot:
     def __init__(self, IP, port, x, y, tag):
         self.IP = IP;
         self.port = port
-        self.coords = Point(x, y)
+        self.x = x
+        self.y = y
         self.water_level = 1
         self.state = "none"
         self.tag = tag;
@@ -51,19 +52,22 @@ class robot:
 
 class obstacle:
     def __init(self, x, y, radius):
-        self.coords = Point(x, y)
+        self.x = x
+        self.y = y
         self.radius = radius
 
 class plant:
     def __init__(self, IP, port, x, y, level):
         self.IP = IP;
         self.port = port
-        self.coords = Point(x,y)
+        self.x = x
+        self.y = y
         self.level = level
         
 class ice:
     def __init__(self, x, y, level):
-        self.coords = Point(x,y)
+        self.x = x
+        self.y = y
         self.level = level
 
 robots = [robot("192.168.32.172", 5000, 0, 0, 2), robot("192.168.32.172", 5000, 0, 0, 3)] 
