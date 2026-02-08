@@ -77,10 +77,10 @@ robotcount = 2  #predefined number of robots (prevent detection of extraneous ta
 
 sockets = []
 
-def connect():
-    for robot in robots:
+def connect(system): #systems are the arrays with objects with have .IP and .port (robots, plants)
+    for item in system:
         sockets.append(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
-        sockets[-1].connect((robot.IP, robot.port))
+        sockets[-1].connect((item.IP, item.port))
 
 ### main ###
 if __name__ == "__main__":
