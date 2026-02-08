@@ -105,7 +105,7 @@ def displayTags(img, results):
     cv2.imshow("Camera", rgb)
     return
 
-def updTagPos(robots):
+def updRobotPos(robots):
     ### get image as RGB and GRAY ###
     if camera_type == "picam":
         yuv420 = cam.capture_array("lores")
