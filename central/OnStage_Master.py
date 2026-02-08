@@ -69,8 +69,8 @@ anchors = [Point(0, 0), Point(0, 0)]  #AT tag 0 and 1 respectively
 obstacles = [obstacle(0, 0, 0), obstacle(0, 0, 0), obstacle(0, 0, 0)]
 plants = [plant("<INSERT IP HERE>", 0, 0, 0, 0)]
 
-field_width = 1  #scales x dimension of relative coordinates
-field_length = 1 #scales y dimension of relative coordinates
+field_width = 8  #scales x dimension of relative coordinates
+field_length = 8 #scales y dimension of relative coordinates
 robotcount = 2  #predefined number of robots (prevent detection of extraneous tags)
 
 sockets = []
