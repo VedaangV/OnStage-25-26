@@ -4,10 +4,10 @@ import math
 
 ### import subfiles ###
 from CBF import get_velocity
-from OnStage_Rcoords import updatePositions
+from OnStage_Rcoords import updRobotPos
 from WifiComms import write, read
 
-states = ["plant", "ice", "mining"]
+states = ["none", "plant", "ice", "mining"]
 
 ### objects ###
 class Point:
@@ -27,8 +27,7 @@ class robot:
     def __init__(self, IP, port, x, y, tag):
         self.IP = IP;
         self.port = port
-        self.x = x
-        self.y = y
+        self.coords = Point(x, y)
         self.water_level = 1
         self.state = "none"
         self.tag = tag;
@@ -43,7 +42,7 @@ class robot:
     
     def setState(int s): #set state manually
         self.state = states[s]
-    def action(): #change state after completing current task
+    def actionState(): #change state after completing current task
         if (self.atTarget == True):
             self.changeWater()
             for i in range(4):
@@ -52,22 +51,19 @@ class robot:
 
 class obstacle:
     def __init(self, x, y, radius):
-        self.x = x
-        self.y = y
+        self.coords = Point(x, y)
         self.radius = radius
 
 class plant:
     def __init__(self, IP, port, x, y, level):
         self.IP = IP;
         self.port = port
-        self.x = x
-        self.y = y
+        self.coords = Point(x, y)
         self.level = level
         
 class ice:
     def __init__(self, x, y, level):
-        self.x = x
-        self.y = y
+        self.coords = Point(x, y)
         self.level = level
 
 robots = [robot("192.168.32.172", 5000, 0, 0, 2), robot("192.168.32.172", 5000, 0, 0, 3)] 
@@ -76,7 +72,7 @@ obstacles = [obstacle(0, 0, 0), obstacle(0, 0, 0), obstacle(0, 0, 0)]
 plants = [plant("<INSERT IP HERE>", 0, 0, 0, 0)]
 
 field_width = 1  #scales x dimension of relative coordinates
-field_length = 1  #scales y dimension of relative coordinates
+field_length = 1 #scales y dimension of relative coordinates
 robotcount = 2  #predefined number of robots (prevent detection of extraneous tags)
 
 sockets = []
@@ -89,12 +85,11 @@ def connect():
 ### main ###
 if __name__ == "__main__":
     while True:
-        for idx in range(len(robots)):
-            robot = robots[idx]
-            robot.changeState()
-            velocity = drive(robot, np.array(robot.targetX, robot.targetY), obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10)
+        for idx, robot in enumerate(robots)):
+            robot.actionState()
+            velocity = drive(robot, np.array(robot.target.x, robot.target.y), obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10)
             write(sockets[idx], "vx: " + velocity[0] + ", vy: " + velocity[1])
-        updatePositions()
+        updRobotPos(robots)
         
 #Point(field_width*(abs(anchors[0].x - r.center[0]) / abs(anchors[0].x - anchors[1].x)), field_length*(abs(anchors[0].y - r.center[1]) / abs(anchors[0].y - anchors[1].y)))
         
