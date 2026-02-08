@@ -40,20 +40,6 @@ else:
         print("Failed to open camera")
         exit()
 
-### objects ###
-class Point:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-
-    def distance_to(self, other_point):
-        dx = self.x - other_point.x
-        dy = self.y - other_point.y
-        return math.sqrt(dx**2 + dy**2)
-
-    def __str__(self):
-        return f"Point({self.x}, {self.y})"
-
 ### functions ###
 def apply_imgfx(input_img, brightness = 0, contrast = 0):
     if brightness != 0:
