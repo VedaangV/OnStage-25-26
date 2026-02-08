@@ -129,8 +129,8 @@ def updRobotPos(robots):
     for r in results:
         for robot in robots:
             if (robot.tag == r.tag_id):
-                robot.x = r.center[0]
-                robot.y = r.center[1]
+                robot.coords.x = r.center[0]
+                robot.coords.y = r.center[1]
                 break
             
     displayTags(rgb, results) #
