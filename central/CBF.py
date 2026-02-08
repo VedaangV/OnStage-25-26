@@ -5,10 +5,10 @@ import numpy as np
 from Onstage_Master import Point
 from Onstage_Master import robot
 
-def get_velocity(bot, target, obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10):
-            #nominal controller
+def get_velocity(robot, target, obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10):
+        #nominal controller
         v_nom = 1.0
-        dir = target - np.array(bot.x, bot.y)
+        dir = target - np.array(robot.x, robot.y)
         dist = np.linalg.norm(dir)
         
         if dist > 1e-6:
@@ -21,8 +21,8 @@ def get_velocity(bot, target, obstacles, alpha=1.0, speed=0.10, obs_clearance=0.
         B = []
         
         for obs in obstacles:
-            dx = bot.x-obs[0]
-            dy = bot.y - obs[1]
+            dx = robot.x-obs[0]
+            dy = robot.y - obs[1]
             dist_obs = sqrt(dx**2 + dy**2)
             
             safe_buffer = obs[2]+detect_clearance
