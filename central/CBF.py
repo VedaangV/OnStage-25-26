@@ -3,7 +3,6 @@ import math
 import numpy as np
 
 from Onstage_Master import Point
-from Onstage_Master import robot
 
 def get_velocity(robot, target, obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10):
         #nominal controller
