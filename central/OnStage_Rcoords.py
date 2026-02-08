@@ -20,6 +20,11 @@ module_dir = os.path.abspath('/home/pi/onstage/python/apriltag/lib/python3.11/si
 sys.path.append(module_dir)
 import apriltag
 
+import math
+from OnStage_Master import Point
+from OnStage_Master import field_length, field_width
+from OnStage_Master import anchors
+
 ### setup camera ###
 camera_type = "ausdom"
 camera_port = 8
@@ -86,12 +91,24 @@ def displayTags(img, results):
         tagFamily = r.tag_family.decode("utf-8")
         cv2.putText(img, (str(r.tag_id) + " " + tagFamily), (ptA[0], ptA[1] - 15),
             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-    
+   
     ### display edited image ###
     cv2.imshow("Camera", rgb)
     return
 
-def updRobotPos(robots):
+def convertPos(cam_pos)
+    ###
+    dist = []
+    for a in anchors:
+        dist.append(abs(a.distance_to(cam_pos)))
+    dist.remove(max(dist))
+    d = min(dist)
+    dist.remove(min(dist))
+    x = 
+    
+    return field_pos
+    
+def updTagPos(system):
     ### get image as RGB and GRAY ###
     if camera_type == "picam":
         yuv420 = cam.capture_array("lores")
@@ -111,12 +128,12 @@ def updRobotPos(robots):
     detector = apriltag.Detector(options) #setup AT
     results = detector.detect(gray)
 
-    ### update robot x and y values
+    ### update robot x and y values ###
     for r in results:
-        for robot in robots:
-            if (robot.tag == r.tag_id):
-                robot.coords.x = r.center[0]
-                robot.coords.y = r.center[1]
+        for item in system:
+            if (item.tag == r.tag_id):
+                item.coords.x = r.center[0]
+                item.coords.y = r.center[1]
                 break
             
     displayTags(rgb, results) #
