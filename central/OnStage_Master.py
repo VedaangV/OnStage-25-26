@@ -7,7 +7,7 @@ from CBF import get_velocity
 from OnStage_Rcoords import updRobotPos
 from WifiComms import write, read
 
-states = ["none", "plant", "ice", "mining"]
+states = ["ice", "deposit", "withdraw", "plant"]  #!tentative #deposit and withdraw refer to moving water in and out of base station
 
 ### objects ###
 class Point:
@@ -28,26 +28,24 @@ class robot:
         self.IP = IP;
         self.port = port
         self.coords = Point(x, y)
-        self.water_level = 1
+        self.haswater = False
         self.state = "none"
         self.tag = tag;
     def setTarget(x, y):
         self.target = Point(x, y)
-    def depleteWater():
-        self.water_level -= 1
-    def restoreWater():
-        self.water_level += 1
+    def changeWater():
+        self.haswater = not self.haswater
     def atTarget():
-        return (math.sqrt((self.x-self.targetX)**2 + (self.y-self.targetY)**2) < 0.5)
+        return (math.sqrt((self.x-self.targetX)**2 + (self.y-self.targetY)**2) < 0.5)  #!tentative
     
     def setState(int s): #set state manually
         self.state = states[s]
-    def actionState(): #change state after completing current task
+    def changeState(): #change state after completing current task
         if (self.atTarget == True):
             self.changeWater()
-            for i in range(4):
+            for i in range(len(states)):
                 if (self.state == states[i]):
-                    self.state == states[(i + 1) % 4]
+                    self.state == states[(i + 1) % len(states)]
 
 class obstacle:
     def __init(self, x, y, radius):
@@ -86,7 +84,7 @@ def connect(system): #systems are the arrays with objects with have .IP and .por
 if __name__ == "__main__":
     while True:
         for idx, robot in enumerate(robots)):
-            robot.actionState()
+            robot.changeState()
             velocity = drive(robot, np.array(robot.target.x, robot.target.y), obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10)
             write(sockets[idx], "vx: " + velocity[0] + ", vy: " + velocity[1])
         updRobotPos(robots)
