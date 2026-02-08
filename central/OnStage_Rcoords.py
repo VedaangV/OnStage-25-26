@@ -7,6 +7,7 @@
 #    can be checked using linux commands
 #    sudo apt install v4l-utils
 #    v4l2-ctl --list-devices
+# tune additional camera values depending on testing environment (camera_brightness, camera_contrast...)
 
 ### import libraries ###
 import cv2
@@ -21,15 +22,20 @@ import apriltag
 
 ### setup camera ###
 camera_type = "ausdom"
-camera_port = 8;
+camera_port = 8
+camera_width = 640; camera_height = 480
+camera_brightness = 0; camera_contrast = 0
 
 if camera_type == "picam":
     cam = Picamera2()
-    config = cam.create_preview_configuration(lores={"size": (640, 480)})   #(640, 480)
+    config = cam.create_preview_configuration(lores={"size": (camera_width, camera_height)}) #(640, 480)
     cam.configure(config)
     cam.start()
 else:
     cam = cv2.VideoCapture(camera_port)
+    cam.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
+    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
+    cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
     if not cam.isOpened():
         print("Failed to open camera")
         exit()
@@ -49,25 +55,31 @@ class Point:
         return f"Point({self.x}, {self.y})"
 
 ### functions ###
-def displayTags():
-    ### get image as RGB and GRAY ###
-    if camera_type == "picam":
-        yuv420 = cam.capture_array("lores")
-        rgb = cv2.cvtColor(yuv420, cv2.COLOR_YUV420p2RGB)
-        gray = cv2.cvtColor(yuv420, cv2.COLOR_YUV420p2GRAY)
+def apply_imgfx(input_img, brightness = 0, contrast = 0):
+    if brightness != 0:
+        if brightness > 0:
+            shadow = brightness
+            highlight = 255
+        else:
+            shadow = 0
+            highlight = 255 + brightness
+        alpha_b = (highlight - shadow)/255
+        gamma_b = shadow
+        
+        buf = cv2.addWeighted(input_img, alpha_b, input_img, 0, gamma_b)
     else:
-        ret, frame = cam.read()
-        if not ret:
-            print("Failed to get camera frame")
-            break
-        rgb = frame
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        buf = input_img.copy()
     
-    ### get results of AT detection ###
-    options = apriltag.DetectorOptions(families="tag36h11")
-    detector = apriltag.Detector(options)
-    results = detector.detect(gray)
-   
+    if contrast != 0:
+        f = 131*(contrast + 127)/(127*(131-contrast))
+        alpha_c = f
+        gamma_c = 127*(1-f)
+        
+        buf = cv2.addWeighted(buf, alpha_c, buf, 0, gamma_c)
+
+    return buf
+
+def displayTags(img, results):
     ### draw bounding boxes and info of ATs ###
     for r in results:
         # get points
@@ -77,23 +89,23 @@ def displayTags():
         ptD = (int(ptD[0]), int(ptD[1]))
         ptA = (int(ptA[0]), int(ptA[1]))
         # draw lines
-        cv2.line(rgb, ptA, ptB, (0, 255, 0), 2)
-        cv2.line(rgb, ptB, ptC, (0, 255, 0), 2)
-        cv2.line(rgb, ptC, ptD, (0, 255, 0), 2)
-        cv2.line(rgb, ptD, ptA, (0, 255, 0), 2)
+        cv2.line(img, ptA, ptB, (0, 255, 0), 2)
+        cv2.line(img, ptB, ptC, (0, 255, 0), 2)
+        cv2.line(img, ptC, ptD, (0, 255, 0), 2)
+        cv2.line(img, ptD, ptA, (0, 255, 0), 2)
         # draw center
         (cX, cY) = (int(r.center[0]), int(r.center[1]))
-        cv2.circle(rgb, (cX, cY), 5, (0, 0, 255), -1)
+        cv2.circle(img, (cX, cY), 5, (0, 0, 255), -1)
         # draw tag family
         tagFamily = r.tag_family.decode("utf-8")
-        cv2.putText(rgb, (str(r.tag_id) + " " + tagFamily), (ptA[0], ptA[1] - 15),
+        cv2.putText(img, (str(r.tag_id) + " " + tagFamily), (ptA[0], ptA[1] - 15),
             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
     
     ### display edited image ###
     cv2.imshow("Camera", rgb)
     return
 
-def updTagPos(tag):
+def updTagPos(robots):
     ### get image as RGB and GRAY ###
     if camera_type == "picam":
         yuv420 = cam.capture_array("lores")
@@ -104,6 +116,7 @@ def updTagPos(tag):
         if not ret:
             print("Failed to get camera frame")
             break
+        frame = apply_imgfx(frame, camera_brightness, camera_contrast) 
         rgb = frame
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
@@ -112,25 +125,13 @@ def updTagPos(tag):
     detector = apriltag.Detector(options) #setup AT
     results = detector.detect(gray)
 
+    ### update robot x and y values
     for r in results:
-        if tags.include(r.tag_id) == True:
-            coords = Point(r.center[0], r.center[1])
-    return coords
-
-### testing ###
-if __name__ == "__main__":
-    ###
-    while True:
-        rcoords = []
-        for i in range(0, 11):
-            rcoords.append(updTagPos(i))
+        for robot in robots:
+            if (robot.tag == r.tag_id):
+                robot.x = r.center[0]
+                robot.y = r.center[1]
+                break
             
-        displayTags()
-        if cv2.waitKey(1) & 0xFF == ord('q'): 
-            break
-    ###
-    cv2.destroyAllWindows()
-    if camera_type == "picam":
-        cam.stop()
-    else:
-        cam.release()
+    displayTags(rgb, results) #
+    return
