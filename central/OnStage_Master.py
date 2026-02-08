@@ -29,7 +29,7 @@ class robot:
         self.port = port
         self.coords = Point(x, y)
         self.haswater = False
-        self.state = "none"
+        self.state = "ice"
         self.tag = tag;
     def setTarget(x, y):
         self.target = Point(x, y)
