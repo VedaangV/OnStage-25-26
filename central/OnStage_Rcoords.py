@@ -103,18 +103,13 @@ def convertPos(cam_pos)
     
 def updTagPos(system):
     ### get image as RGB and GRAY ###
-    if camera_type == "picam":
-        yuv420 = cam.capture_array("lores")
-        rgb = cv2.cvtColor(yuv420, cv2.COLOR_YUV420p2RGB)
-        gray = cv2.cvtColor(yuv420, cv2.COLOR_YUV420p2GRAY)
-    else:
-        ret, frame = cam.read()
-        if not ret:
-            print("Failed to get camera frame")
-            break
-        frame = apply_imgfx(frame, camera_brightness, camera_contrast) 
-        rgb = frame
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    ret, frame = cam.read()
+    if not ret:
+        print("Failed to get camera frame")
+        break
+    frame = apply_imgfx(frame, camera_brightness, camera_contrast) 
+    rgb = frame
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
     ### get AT detection results ###
     options = apriltag.DetectorOptions(families="tag36h11") #setup AT
