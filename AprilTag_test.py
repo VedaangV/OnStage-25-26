@@ -56,8 +56,8 @@ class Point:
         return np.array([self.x, self.y])
     
 ### setup camera ###
-camera_type = "ausdom"
-camera_port = 8
+camera_type = "ausdom"	
+camera_port = 0
 camera_width = 640; camera_height = 480
 camera_brightness = 0; camera_contrast = 0
 
