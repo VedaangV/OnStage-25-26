@@ -7,7 +7,6 @@
 #    can be checked using linux commands
 #    sudo apt install v4l-utils
 #    v4l2-ctl --list-devices
-# tune additional camera values depending on testing environment (camera_brightness, camera_contrast...)
 
 ### import libraries ###
 import sys
@@ -58,18 +57,20 @@ class Point:
 ### setup camera ###
 camera_type = "ausdom"	
 camera_port = 0
-camera_width = 640; camera_height = 480
+camera_width = 640; camera_height = 480  #seems that setting camera dimensions doesnt affect resolution, only affects size of camera window
+camera_fps = 30;  #capped out at 30 fps for ausdom camera
 camera_brightness = 0; camera_contrast = 0
 
 if camera_type == "picam":
     cam = Picamera2()
-    config = cam.create_preview_configuration(lores={"size": (camera_width, camera_height)}) #(640, 480)
+    config = cam.create_preview_configuration(lores={"size": (camera_width, camera_height)}) 
     cam.configure(config)
     cam.start()
 else:
     cam = cv2.VideoCapture(camera_port)
     cam.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
     cam.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
+    cam.set(cv2.CAP_PROP_FPS, camera_fps)
     cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
     if not cam.isOpened():
         print("Failed to open camera")
