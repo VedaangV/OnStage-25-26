@@ -96,7 +96,7 @@ def apriltag_rot(result):
     center = Point(int(r.center[0]), int(r.center[1]))
     
     side_length = A.distance_to(B)
-    A2 = Point(center.x - side_length/2, center.y + side_length/2)
+    A2 = Point(center.x - side_length/2, center.y - side_length/2)
     
     base = A.distance_to(A2)
     leg = A.distance_to(center)
@@ -105,9 +105,15 @@ def apriltag_rot(result):
         val = 1
     if (val < -1):
         val = -1
-   
+        
     rad = 2 * math.asin(val)
     deg = rad * 180 / math.pi
+    if (A.y < B.y):
+        deg = deg
+    elif (A.y > B.y):
+        deg = -deg
+    else:
+        deg = deg
     return deg
     
 def convertPos(cam_pos)
