@@ -65,7 +65,7 @@ def apriltag_rot(result):
     center = Point(int(r.center[0]), int(r.center[1]))
     
     side_length = A.distance_to(B)
-    A2 = Point(center.x - side_length/2, center.y + side_length/2)
+    A2 = Point(center.x - side_length/2, center.y - side_length/2)
     
     base = A.distance_to(A2)
     leg = A.distance_to(center)
@@ -74,9 +74,15 @@ def apriltag_rot(result):
         val = 1
     if (val < -1):
         val = -1
-   
+        
     rad = 2 * math.asin(val)
     deg = rad * 180 / math.pi
+    if (A.y < B.y):
+        deg = deg
+    elif (A.y > B.y):
+        deg = -deg
+    else:
+        deg = deg
     return deg
     
 ### setup camera ###
@@ -131,6 +137,11 @@ while True:
         tagFamily = r.tag_family.decode("utf-8")
             #cv2.putText(rgb, (str(r.tag_id) + " " + tagFamily), (ptA[0], ptA[1] - 15),
             #   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        cv2.putText(rgb, "A", (ptA[0], ptA[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        cv2.putText(rgb, "B", (ptB[0], ptB[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        cv2.putText(rgb, "C", (ptC[0], ptC[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        cv2.putText(rgb, "D", (ptD[0], ptD[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        
         rot = apriltag_rot(r)
         cv2.putText(rgb, str(rot), (ptA[0], ptA[1] - 15),
             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
