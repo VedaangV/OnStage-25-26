@@ -19,8 +19,6 @@ import apriltag
 
 import math
 from OnStage_Master import Point
-from OnStage_Master import field_length, field_width
-from OnStage_Master import anchors
 
 ### setup camera ###
 camera_type = "ausdom"
@@ -60,7 +58,7 @@ def apply_imgfx(input_img, brightness = 0, contrast = 0):
         gamma_c = 127*(1-f)
         
         buf = cv2.addWeighted(buf, alpha_c, buf, 0, gamma_c)
-
+item
     return buf
 
 def displayTags(img, results):
@@ -116,17 +114,10 @@ def apriltag_rot(result):
         deg = deg
     return deg
     
-def convertPos(cam_pos)
+def convertPos(original_coords, anc_topleft, anc_topright, anc_bottomleft, field_size)
     ###
-    dist = []
-    for a in anchors:
-        dist.append(abs(a.distance_to(cam_pos)))
-    dist.remove(max(dist))
-    d = min(dist)
-    dist.remove(min(dist))
-    x = 
-    
-    return field_pos
+    new_coords = Point(field_size*(abs(anc_topleft.x - original_coords.x) / abs(anc_topleft.x - anc_topright.x)), field_size*(abs(anc_topleft.y - original_coords.y) / abs(anc_topleft.y - anc_bottomleft.y)))
+    return new_coords
     
 def updRobotPos(robots):
     ### get image as RGB and GRAY ###
