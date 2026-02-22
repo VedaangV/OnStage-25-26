@@ -89,6 +89,27 @@ def displayTags(img, results):
     cv2.imshow("Camera", rgb)
     return
 
+def apriltag_rot(result):
+    (ptA, ptB, ptC, ptD) = r.corners
+    A = Point(int(ptA[0]), int(ptA[1])) # top left corner when AT has 0 rotation
+    B = Point(int(ptB[0]), int(ptB[1])) # top right corner
+    center = Point(int(r.center[0]), int(r.center[1]))
+    
+    side_length = A.distance_to(B)
+    A2 = Point(center.x - side_length/2, center.y + side_length/2)
+    
+    base = A.distance_to(A2)
+    leg = A.distance_to(center)
+    val = (base/2)/leg
+    if (val > 1):
+        val = 1
+    if (val < -1):
+        val = -1
+   
+    rad = 2 * math.asin(val)
+    deg = rad * 180 / math.pi
+    return deg
+    
 def convertPos(cam_pos)
     ###
     dist = []
@@ -122,6 +143,7 @@ def updTagPos(system):
             if (item.tag == r.tag_id):
                 item.coords.x = r.center[0]
                 item.coords.y = r.center[1]
+                item.rotation = apriltag_rot(r)
                 break
             
     displayTags(rgb, results) #
