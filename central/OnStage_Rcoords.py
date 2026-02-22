@@ -128,7 +128,7 @@ def convertPos(cam_pos)
     
     return field_pos
     
-def updTagPos(system):
+def updRobotPos(robots):
     ### get image as RGB and GRAY ###
     ret, frame = cam.read()
     if not ret:
@@ -145,11 +145,11 @@ def updTagPos(system):
 
     ### update robot x and y values ###
     for r in results:
-        for item in system:
-            if (item.tag == r.tag_id):
-                item.coords.x = r.center[0]
-                item.coords.y = r.center[1]
-                item.rotation = apriltag_rot(r)
+        for robot in robots:
+            if (robot.tag == r.tag_id):
+                robot.coords.x = r.center[0]
+                robot.coords.y = r.center[1]
+                robot.rotation = apriltag_rot(r)
                 break
             
     displayTags(rgb, results) #
