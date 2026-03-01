@@ -50,6 +50,7 @@ class robot:
             for i in range(len(states)):
                 if (self.state == states[i]):
                     self.state = states[(i + 1) % len(states)]
+                    break
 
 class obstacle:
     def __init(self, x, y, radius):
@@ -119,10 +120,10 @@ if __name__ == "__main__":
     #print(f'total cost: {total}')
         
     while True:
-        for idx, robot in enumerate(robots):
-            robot.changeState()
-            velocity = get_velocity(robot, obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10)
-            write(sockets[idx], "vx: " + velocity[0] + ", vy: " + velocity[1])
+        for i in range(len(robots)):
+            robots[i].changeState()
+            velocity = get_velocity(robots[i], obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10)
+            write(sockets[i], "vx: " + velocity[0] + ", vy: " + velocity[1])
         updRobotPos(robots)
         
 #Point(field_width*(abs(anchors[0].x - r.center[0]) / abs(anchors[0].x - anchors[1].x)), field_length*(abs(anchors[0].y - r.center[1]) / abs(anchors[0].y - anchors[1].y)))
