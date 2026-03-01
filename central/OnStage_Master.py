@@ -9,6 +9,8 @@ from WifiComms import write, read
 
 from munkres import Munkres, print_matrix
 
+MAX_PLANT_GROWTH = 4
+
 states = ["ice", "deposit", "withdraw", "plant"]  #!tentative #deposit and withdraw refer to moving water in and out of base station
 
 ### objects ###
@@ -35,8 +37,8 @@ class robot:
         self.haswater = False
         self.state = "ice"
         self.tag = tag;
-    def setTarget(self, x, y):
-        self.target = Point(x, y)
+    def setTarget(self, target):
+        self.target = target
     def changeWater(self):
         self.haswater = not self.haswater
     def atTarget(self):
@@ -46,7 +48,12 @@ class robot:
         self.state = states[s]
     def changeState(self): #change state after completing current task
         if (self.atTarget == True):
-            self.changeWater()
+            if self.target.type == "Plant" and self.haswater:
+                if self.target.grow():
+                    self.changeWater()
+            elif self.target.type == "Ice" and not self.haswater:
+                if self.target.withdraw():
+                    self.changeWater()
             for i in range(len(states)):
                 if (self.state == states[i]):
                     self.state = states[(i + 1) % len(states)]
@@ -63,11 +70,21 @@ class plant:
         self.port = port
         self.coords = Point(x, y)
         self.level = level
+        self.type = "Plant"
+
+    def grow(self):
+        if (self.level < MAX_PLANT_GROWTH):
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect((self.IP, self.port))
+            write(sock, 'G')
+            return True
+        return False
         
 class ice:
     def __init__(self, x, y, level):
         self.coords = Point(x, y)
         self.level = level
+        self.type = "Ice"
 
     def withdraw(self):
         if (self.level <= 0):
