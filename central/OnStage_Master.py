@@ -101,6 +101,7 @@ ice_patches = [ice(0, 0, 4)] # 4 for now
 field_width = 8  #scales x dimension of relative coordinates
 field_length = 8 #scales y dimension of relative coordinates
 robotcount = 2  #predefined number of robots (prevent detection of extraneous tags)
+camera_port = 8
 
 sockets = []
 
@@ -111,8 +112,8 @@ def connect(system): #systems are the arrays with objects with have .IP and .por
 
 ### main ###
 if __name__ == "__main__":
-    initPlantPos(plants);
-    updRobotPos(robots);
+    initPlantPos(plants)
+    updRobotPos(camera_port, robots, anchors, field_width)
     # calculate initial robot targets with minimal movement
     # use Hungarian algorithm (O(n^3)): uses cost matrix to maximize efficiency 
 
@@ -141,14 +142,6 @@ if __name__ == "__main__":
             robots[i].changeState()
             velocity = get_velocity(robots[i], obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10)
             write(sockets[i], "vx: " + velocity[0] + ", vy: " + velocity[1])
-        updRobotPos(robots)
-        
-#Point(field_width*(abs(anchors[0].x - r.center[0]) / abs(anchors[0].x - anchors[1].x)), field_length*(abs(anchors[0].y - r.center[1]) / abs(anchors[0].y - anchors[1].y)))
-        
-        
-    
-    
-    
-    
-    
+        updRobotPos(camera_port, robots, anchors, field_width)
+        print(str(robots[0].coords.x) + " " + str(robots[0].coords.y))  #testing
     
