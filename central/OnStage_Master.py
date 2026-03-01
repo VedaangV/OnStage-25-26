@@ -30,24 +30,26 @@ class robot:
         self.IP = IP;
         self.port = port
         self.coords = Point(x, y)
+        self.target = Point(0, 0)
+        self.rotation = 0
         self.haswater = False
         self.state = "ice"
         self.tag = tag;
-    def setTarget(x, y):
+    def setTarget(self, x, y):
         self.target = Point(x, y)
-    def changeWater():
+    def changeWater(self):
         self.haswater = not self.haswater
-    def atTarget():
+    def atTarget(self):
         return (math.sqrt((self.x-self.targetX)**2 + (self.y-self.targetY)**2) < 0.5)  #!tentative
     
-    def setState(int s): #set state manually
+    def setState(self, s): #set state manually
         self.state = states[s]
-    def changeState(): #change state after completing current task
+    def changeState(self): #change state after completing current task
         if (self.atTarget == True):
             self.changeWater()
             for i in range(len(states)):
                 if (self.state == states[i]):
-                    self.state == states[(i + 1) % len(states)]
+                    self.state = states[(i + 1) % len(states)]
 
 class obstacle:
     def __init(self, x, y, radius):
@@ -66,10 +68,10 @@ class ice:
         self.coords = Point(x, y)
         self.level = level
 
-    def withdraw():
-        if (level <= 0):
+    def withdraw(self):
+        if (self.level <= 0):
             return False
-        level--;
+        self.level--;
         return True
 
 robots = [robot("192.168.32.172", 5000, 0, 0, 2), robot("192.168.32.172", 5000, 0, 0, 3)] 
