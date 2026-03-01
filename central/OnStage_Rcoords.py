@@ -165,7 +165,6 @@ def initPlantPos(plants):
             if (p.tag == r.tag_id):
                 p.coords.x = r.center[0]
                 p.coords.y = r.center[1]
-                p.rotation = apriltag_rot(r)
                 break
             
     displayTags(rgb, results) #
