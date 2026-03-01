@@ -4,17 +4,18 @@
 #define IN1 X; // input 1
 #define IN2 Y; // input 2
 
+String inputBuffer = "";
 void setup() {
   Serial.begin(115200);
   delay(1000);  
+
+  Wire.begin();
 
   pinMode(IN1, OUTPUT);
   pinMode(IN2, OUTPUT);
 
   digitalWrite(IN1, LOW);
   digitalWrite(IN2, LOW);
-  Wire.begin();
-  Serial.begin(9600);
   
 }
 
