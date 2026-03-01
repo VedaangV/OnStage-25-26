@@ -13,13 +13,21 @@ import sys
 import os
 import cv2
 import numpy as np
-
-from picamera2 import Picamera2
+import math
 
 module_dir = os.path.abspath('/home/pi/onstage/python/apriltag/lib/python3.11/site-packages')
 sys.path.append(module_dir)
 import apriltag
 
+### objects ###
+class Point:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+    def __array__(self) -> np.ndarray:
+        return np.array([self.x, self.y])
+    
 ### functions ###
 def apply_imgfx(input_img, brightness = 0, contrast = 0):
     if brightness != 0:
@@ -45,14 +53,21 @@ def apply_imgfx(input_img, brightness = 0, contrast = 0):
 
     return buf
 
-### objects ###
-class Point:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-
-    def __array__(self) -> np.ndarray:
-        return np.array([self.x, self.y])
+def apriltag_rot(result):
+    (ptA, ptB, ptC, ptD) = r.corners
+    ptB = Point(int(ptB[0]), int(ptB[1]))
+    ptC = Point(int(ptC[0]), int(ptC[1]))
+    ptD = Point(int(ptD[0]), int(ptD[1]))
+    ptA = Point(int(ptA[0]), int(ptA[1]))
+    
+    # determine 2 corners with greatest y values
+    
+    deg = math.atan(abs(ptA.y - ptB.y)/abs(ptA.x-ptB.x))
+    
+    # if A.y > B.y, set deg = -deg
+    # else set deg = +deg
+    
+    return deg
     
 ### setup camera ###
 camera_type = "ausdom"	
@@ -61,36 +76,25 @@ camera_width = 640; camera_height = 480  #seems that setting camera dimensions d
 camera_fps = 30;  #capped out at 30 fps for ausdom camera
 camera_brightness = 0; camera_contrast = 0
 
-if camera_type == "picam":
-    cam = Picamera2()
-    config = cam.create_preview_configuration(lores={"size": (camera_width, camera_height)}) 
-    cam.configure(config)
-    cam.start()
-else:
-    cam = cv2.VideoCapture(camera_port)
-    cam.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
-    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
-    cam.set(cv2.CAP_PROP_FPS, camera_fps)
-    cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-    if not cam.isOpened():
-        print("Failed to open camera")
-        exit()
+cam = cv2.VideoCapture(camera_port)
+cam.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
+cam.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
+cam.set(cv2.CAP_PROP_FPS, camera_fps)
+cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+if not cam.isOpened():
+    print("Failed to open camera")
+    exit()
 
 ### main ###
 while True:
     ### get image as RGB and GRAY ###
-    if camera_type == "picam":
-        yuv420 = cam.capture_array("lores")
-        rgb = cv2.cvtColor(yuv420, cv2.COLOR_YUV420p2RGB)
-        gray = cv2.cvtColor(yuv420, cv2.COLOR_YUV420p2GRAY)
-    else:
-        ret, frame = cam.read()
-        if not ret:
-            print("Failed to get camera frame")
-            break
-        frame = apply_imgfx(frame, camera_brightness, camera_contrast) 
-        rgb = frame
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    ret, frame = cam.read()
+    if not ret:
+        print("Failed to get camera frame")
+        break
+    frame = apply_imgfx(frame, camera_brightness, camera_contrast) 
+    rgb = frame
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
     ### get results of AT detection ###
     options = apriltag.DetectorOptions(families="tag36h11")
@@ -117,7 +121,7 @@ while True:
         tagFamily = r.tag_family.decode("utf-8")
         cv2.putText(rgb, (str(r.tag_id) + " " + tagFamily), (ptA[0], ptA[1] - 15),
             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-    
+
     ### display edited image ###
     cv2.imshow("Camera", rgb)
     
@@ -125,7 +129,4 @@ while True:
         break
 
 cv2.destroyAllWindows()
-if camera_type == "picam":
-    cam.stop()
-else:
-    cam.release()
+cam.release()

@@ -7,14 +7,11 @@
 #    can be checked using linux commands
 #    sudo apt install v4l-utils
 #    v4l2-ctl --list-devices
-# tune additional camera values depending on testing environment (camera_brightness, camera_contrast...)
 
 ### import libraries ###
 import cv2
 import apriltag
 import numpy as np
-
-from picamera2 import Picamera2
 
 module_dir = os.path.abspath('/home/pi/onstage/python/apriltag/lib/python3.11/site-packages')
 sys.path.append(module_dir)
@@ -29,21 +26,17 @@ from OnStage_Master import anchors
 camera_type = "ausdom"
 camera_port = 8
 camera_width = 640; camera_height = 480
+camera_fps = 30;
 camera_brightness = 0; camera_contrast = 0
 
-if camera_type == "picam":
-    cam = Picamera2()
-    config = cam.create_preview_configuration(lores={"size": (camera_width, camera_height)}) #(640, 480)
-    cam.configure(config)
-    cam.start()
-else:
-    cam = cv2.VideoCapture(camera_port)
-    cam.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
-    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
-    cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-    if not cam.isOpened():
-        print("Failed to open camera")
-        exit()
+cam = cv2.VideoCapture(camera_port)
+cam.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
+cam.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
+cam.set(cv2.CAP_PROP_FPS, camera_fps)
+cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+if not cam.isOpened():
+    print("Failed to open camera")
+    exit()
 
 ### functions ###
 def apply_imgfx(input_img, brightness = 0, contrast = 0):
@@ -110,18 +103,13 @@ def convertPos(cam_pos)
     
 def updTagPos(system):
     ### get image as RGB and GRAY ###
-    if camera_type == "picam":
-        yuv420 = cam.capture_array("lores")
-        rgb = cv2.cvtColor(yuv420, cv2.COLOR_YUV420p2RGB)
-        gray = cv2.cvtColor(yuv420, cv2.COLOR_YUV420p2GRAY)
-    else:
-        ret, frame = cam.read()
-        if not ret:
-            print("Failed to get camera frame")
-            break
-        frame = apply_imgfx(frame, camera_brightness, camera_contrast) 
-        rgb = frame
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    ret, frame = cam.read()
+    if not ret:
+        print("Failed to get camera frame")
+        break
+    frame = apply_imgfx(frame, camera_brightness, camera_contrast) 
+    rgb = frame
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
     ### get AT detection results ###
     options = apriltag.DetectorOptions(families="tag36h11") #setup AT

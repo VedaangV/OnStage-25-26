@@ -16,4 +16,4 @@ extern Motor Lmotor;
 extern Motor Rmotor;
 
 void motor(int, int, int);
-void vmotor(int Vx, int Vy, int rotation);
+void vmotor(float Vx, float Vy, float rotation);

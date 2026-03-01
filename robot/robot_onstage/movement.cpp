@@ -33,12 +33,12 @@ void motor(int speed1, int speed2, int speed3) {
 
 //function: set motor speeds based on velocity
 const int basespeed = 30;
-const int radius = 0.5; //meters
-
-void vmotor(int Vx, int Vy, int rotation) {
-  int s1 = (-1/2*Vx) + (sqrt(3)/2*Vy) + (radius * rotation); //top motor
-  int s3 = (-1/2*Vx) + (-sqrt(3)/2*Vy) + (radius * rotation); //left motor
-  int s2 = Vx + (radius * rotation); //right motor
+const float radius = 0.058; //meters
+const float msToSpeed = 517.24137931;
+void vmotor(float Vx, float Vy, float rotation) {
+  int s1 = (((-1/2.0)*Vx) + (sqrt(3)/2.0*Vy) + (radius * rotation)); //right motor
+  int s3 = (((-1/2.0)*Vx) + (-sqrt(3)/2.0*Vy) + (radius * rotation)); //left motor
+  int s2 = (Vx + (radius * rotation)); //back motor
 
   motor(s1, s2, s3);
 }
