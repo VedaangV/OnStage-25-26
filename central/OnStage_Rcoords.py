@@ -19,8 +19,6 @@ import apriltag
 
 import math
 from OnStage_Master import Point
-from OnStage_Master import field_length, field_width
-from OnStage_Master import anchors
 
 ### setup camera ###
 camera_type = "ausdom"
@@ -60,7 +58,7 @@ def apply_imgfx(input_img, brightness = 0, contrast = 0):
         gamma_c = 127*(1-f)
         
         buf = cv2.addWeighted(buf, alpha_c, buf, 0, gamma_c)
-
+item
     return buf
 
 def displayTags(img, results):
@@ -89,19 +87,39 @@ def displayTags(img, results):
     cv2.imshow("Camera", rgb)
     return
 
-def convertPos(cam_pos)
+def apriltag_rot(result):
+    (ptA, ptB, ptC, ptD) = r.corners
+    A = Point(int(ptA[0]), int(ptA[1])) # top left corner when AT has 0 rotation
+    B = Point(int(ptB[0]), int(ptB[1])) # top right corner
+    center = Point(int(r.center[0]), int(r.center[1]))
+    
+    side_length = A.distance_to(B)
+    A2 = Point(center.x - side_length/2, center.y - side_length/2)
+    
+    base = A.distance_to(A2)
+    leg = A.distance_to(center)
+    val = (base/2)/leg
+    if (val > 1):
+        val = 1
+    if (val < -1):
+        val = -1
+        
+    rad = 2 * math.asin(val)
+    deg = rad * 180 / math.pi
+    if (A.y < B.y):
+        deg = deg
+    elif (A.y > B.y):
+        deg = -deg
+    else:
+        deg = deg
+    return deg
+    
+def convertPos(original_coords, anc_topleft, anc_topright, anc_bottomleft, field_size)
     ###
-    dist = []
-    for a in anchors:
-        dist.append(abs(a.distance_to(cam_pos)))
-    dist.remove(max(dist))
-    d = min(dist)
-    dist.remove(min(dist))
-    x = 
+    new_coords = Point(field_size*(abs(anc_topleft.x - original_coords.x) / abs(anc_topleft.x - anc_topright.x)), field_size*(abs(anc_topleft.y - original_coords.y) / abs(anc_topleft.y - anc_bottomleft.y)))
+    return new_coords
     
-    return field_pos
-    
-def updTagPos(system):
+def updRobotPos(robots):
     ### get image as RGB and GRAY ###
     ret, frame = cam.read()
     if not ret:
@@ -118,10 +136,11 @@ def updTagPos(system):
 
     ### update robot x and y values ###
     for r in results:
-        for item in system:
-            if (item.tag == r.tag_id):
-                item.coords.x = r.center[0]
-                item.coords.y = r.center[1]
+        for robot in robots:
+            if (robot.tag == r.tag_id):
+                robot.coords.x = r.center[0]
+                robot.coords.y = r.center[1]
+                robot.rotation = apriltag_rot(r)
                 break
             
     displayTags(rgb, results) #

@@ -25,8 +25,13 @@ class Point:
         self.x = x
         self.y = y
 
-    def __array__(self) -> np.ndarray:
-        return np.array([self.x, self.y])
+    def distance_to(self, other_point):
+        dx = self.x - other_point.x
+        dy = self.y - other_point.y
+        return math.sqrt(dx**2 + dy**2)
+
+    def __str__(self):
+        return f"Point({self.x}, {self.y})"
     
 ### functions ###
 def apply_imgfx(input_img, brightness = 0, contrast = 0):
@@ -55,18 +60,29 @@ def apply_imgfx(input_img, brightness = 0, contrast = 0):
 
 def apriltag_rot(result):
     (ptA, ptB, ptC, ptD) = r.corners
-    ptB = Point(int(ptB[0]), int(ptB[1]))
-    ptC = Point(int(ptC[0]), int(ptC[1]))
-    ptD = Point(int(ptD[0]), int(ptD[1]))
-    ptA = Point(int(ptA[0]), int(ptA[1]))
+    A = Point(int(ptA[0]), int(ptA[1])) # top left corner when AT has 0 rotation
+    B = Point(int(ptB[0]), int(ptB[1])) # top right corner
+    center = Point(int(r.center[0]), int(r.center[1]))
     
-    # determine 2 corners with greatest y values
+    side_length = A.distance_to(B)
+    A2 = Point(center.x - side_length/2, center.y - side_length/2)
     
-    deg = math.atan(abs(ptA.y - ptB.y)/abs(ptA.x-ptB.x))
-    
-    # if A.y > B.y, set deg = -deg
-    # else set deg = +deg
-    
+    base = A.distance_to(A2)
+    leg = A.distance_to(center)
+    val = (base/2)/leg
+    if (val > 1):
+        val = 1
+    if (val < -1):
+        val = -1
+        
+    rad = 2 * math.asin(val)
+    deg = rad * 180 / math.pi
+    if (A.y < B.y):
+        deg = deg
+    elif (A.y > B.y):
+        deg = -deg
+    else:
+        deg = deg
     return deg
     
 ### setup camera ###
@@ -119,7 +135,15 @@ while True:
         cv2.circle(rgb, (cX, cY), 5, (0, 0, 255), -1)
         # draw tag family
         tagFamily = r.tag_family.decode("utf-8")
-        cv2.putText(rgb, (str(r.tag_id) + " " + tagFamily), (ptA[0], ptA[1] - 15),
+            #cv2.putText(rgb, (str(r.tag_id) + " " + tagFamily), (ptA[0], ptA[1] - 15),
+            #   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        cv2.putText(rgb, "A", (ptA[0], ptA[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        cv2.putText(rgb, "B", (ptB[0], ptB[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        cv2.putText(rgb, "C", (ptC[0], ptC[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        cv2.putText(rgb, "D", (ptD[0], ptD[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        
+        rot = apriltag_rot(r)
+        cv2.putText(rgb, str(rot), (ptA[0], ptA[1] - 15),
             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
     ### display edited image ###
