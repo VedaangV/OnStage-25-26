@@ -1,5 +1,4 @@
 #include <iostream>
-#include <winsock.h>
 using namespace std;
 
 #define MAX_GROWTH_STAGE 4
@@ -33,34 +32,3 @@ class Plant {
 	}
 
 };
-
-int main() {
-
-	Plant self = Plant();
-
-	int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-
-	sockaddr_in serverAddress;
-	serverAddress.sin_family = AF_INET;
-	serverAddress.sin_port = htons(5000);
-	serverAddress.sin_addr.s_addr = INADDR_ANY;
-
-	bind(serverSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
-
-	while (self.fully_grown == false) {
-
-		listen(serverSocket, 5);
-		int client = accept(serverSocket, nullptr, nullptr);
-
-		char data[2] = { 0 }; // either one character to grow, or two for coords
-		recv(serverSocket, data, sizeof(data), 0);
-
-		if (data[0] == 'G') self.grow();
-		else { // we have received coords
-			self.x = data[0];
-			self.y = data[1];
-		}
-
-	}
-
-}
