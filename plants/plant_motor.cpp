@@ -2,7 +2,7 @@
 #include "plant_motor.h"
 
 //set motor pins
-Motor Motor{8, 9};
+Motor PMotor{8, 9};
 
 //motor functions
 //motor mapping
@@ -26,5 +26,5 @@ void Motor::speed(int val) {
 
 //function: set motor speeds
 void motor(int speed) {
-  Motor.speed(speed);
+  PMotor.speed(speed);
 }
