@@ -85,7 +85,7 @@ if __name__ == "__main__":
     while True:
         for idx, robot in enumerate(robots)):
             robot.changeState()
-            velocity = drive(robot, np.array(robot.target.x, robot.target.y), obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10)
+            velocity = get_velocity(robot, obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10)
             write(sockets[idx], "vx: " + velocity[0] + ", vy: " + velocity[1])
         updRobotPos(robots)
         
