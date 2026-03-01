@@ -2,9 +2,6 @@ import random
 import math
 import numpy as np
 
-from Onstage_Master import Point
-from Onstage_Master import robot
-
 def get_velocity(robot, obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10):
         #nominal controller
         v_nom = 1.0
@@ -63,10 +60,7 @@ def get_velocity(robot, obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, de
             velocity = u.value
         
         return velocity
-
         
-        
-                
                 
 
 
