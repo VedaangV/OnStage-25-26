@@ -4,7 +4,7 @@ import math
 
 ### import subfiles ###
 from CBF import get_velocity
-from OnStage_Rcoords import updRobotPos
+from OnStage_Rcoords import updRobotPos, initPlantPos
 from WifiComms import write, read
 
 states = ["ice", "deposit", "withdraw", "plant"]  #!tentative #deposit and withdraw refer to moving water in and out of base station
@@ -82,6 +82,7 @@ def connect(system): #systems are the arrays with objects with have .IP and .por
 
 ### main ###
 if __name__ == "__main__":
+    initPlantPos(plants);
     while True:
         for idx, robot in enumerate(robots)):
             robot.changeState()
