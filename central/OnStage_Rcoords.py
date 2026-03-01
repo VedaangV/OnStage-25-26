@@ -145,3 +145,28 @@ def updRobotPos(robots):
             
     displayTags(rgb, results) #
     return
+
+def initPlantPos(plants):
+    ret, frame = cam.read()
+    if not ret:
+        break
+    frame = apply_imgfx(frame, camera_brightness, camera_contrast) 
+    rgb = frame
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    
+    ### get AT detection results ###
+    options = apriltag.DetectorOptions(families="tag36h11") #setup AT
+    detector = apriltag.Detector(options) #setup AT
+    results = detector.detect(gray)
+
+    ### update robot x and y values ###
+    for r in results:
+        for p in plants:
+            if (p.tag == r.tag_id):
+                p.coords.x = r.center[0]
+                p.coords.y = r.center[1]
+                p.rotation = apriltag_rot(r)
+                break
+            
+    displayTags(rgb, results) #
+    return
