@@ -7,6 +7,8 @@ from CBF import get_velocity
 from OnStage_Rcoords import updRobotPos, initPlantPos
 from WifiComms import write, read
 
+from munkres import Munkres, print_matrix
+
 states = ["ice", "deposit", "withdraw", "plant"]  #!tentative #deposit and withdraw refer to moving water in and out of base station
 
 ### objects ###
@@ -64,10 +66,17 @@ class ice:
         self.coords = Point(x, y)
         self.level = level
 
+    def withdraw():
+        if (level <= 0):
+            return False
+        level--;
+        return True
+
 robots = [robot("192.168.32.172", 5000, 0, 0, 2), robot("192.168.32.172", 5000, 0, 0, 3)] 
 anchors = [Point(0, 0), Point(0, 0)]  #AT tag 0 and 1 respectively
 obstacles = [obstacle(0, 0, 0), obstacle(0, 0, 0), obstacle(0, 0, 0)]
 plants = [plant("<INSERT IP HERE>", 0, 0, 0, 0)]
+ice_patches = [ice(0, 0, 4)] # 4 for now
 
 field_width = 8  #scales x dimension of relative coordinates
 field_length = 8 #scales y dimension of relative coordinates
@@ -83,8 +92,32 @@ def connect(system): #systems are the arrays with objects with have .IP and .por
 ### main ###
 if __name__ == "__main__":
     initPlantPos(plants);
+    updRobotPos(robots);
+    # calculate initial robot targets with minimal movement
+    # use Hungarian algorithm (O(n^3)): uses cost matrix to maximize efficiency 
+
+    #initialize cost matrix
+    matrix = []
+    row = 0
+    for robot in robots:
+        matrix.append([])
+        for plant in plants:
+            matrix[row].append((math.sqrt((robot.coords.x-plant.coords.x)**2 + (robot.coords.y-plant.coords.y)**2)))
+        row+=1
+    
+    m = Munkres()
+    indexes = m.compute(matrix)
+    #print_matrix(matrix, msg='Lowest cost through this matrix:')
+    total = 0
+    for row, column in indexes:
+        robots[row].setTarget(plants[column].coords.x, plants[column].coords.y)
+        #value = matrix[row][column]
+        #total += value
+        #print(f'({row}, {column}) -> {value}')
+    #print(f'total cost: {total}')
+        
     while True:
-        for idx, robot in enumerate(robots)):
+        for idx, robot in enumerate(robots):
             robot.changeState()
             velocity = get_velocity(robot, obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10)
             write(sockets[idx], "vx: " + velocity[0] + ", vy: " + velocity[1])
