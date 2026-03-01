@@ -5,6 +5,8 @@
 #define IN2 Y; // input 2
 
 void setup() {
+  Serial.begin(115200);
+  delay(1000);  
 
   pinMode(IN1, OUTPUT);
   pinMode(IN2, OUTPUT);
