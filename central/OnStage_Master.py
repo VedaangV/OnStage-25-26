@@ -114,7 +114,7 @@ def connect(system): #systems are the arrays with objects with have .IP and .por
 if __name__ == "__main__":
     initPlantPos(plants)
     updRobotPos(camera_port, robots, anchors, field_width)
-    # calculate initial robot targets with minimal movement
+    # intial calculation of closest robot targets (minimal movement)
     # use Hungarian algorithm (O(n^3)): uses cost matrix to maximize efficiency 
 
     #initialize cost matrix
