@@ -11,8 +11,6 @@ from munkres import Munkres, print_matrix
 
 MAX_PLANT_GROWTH = 4
 
-states = ["ice", "deposit", "withdraw", "plant"]  #!tentative #deposit and withdraw refer to moving water in and out of base station
-
 ### objects ###
 class Point:
     def __init__(self, x, y):
@@ -35,7 +33,7 @@ class robot:
         self.target = Point(0, 0)
         self.rotation = 0
         self.haswater = False
-        self.state = "ice"
+        self.state = "Ice"
         self.tag = tag;
     def setTarget(self, target):
         self.target = target
@@ -45,19 +43,32 @@ class robot:
         return (math.sqrt((self.x-self.targetX)**2 + (self.y-self.targetY)**2) < 0.5)  #!tentative
     
     def setState(self, s): #set state manually
-        self.state = states[s]
+        self.state = s
     def changeState(self): #change state after completing current task
-        if (self.atTarget == True):
+        if self.atTarget == True:
             if self.target.type == "Plant" and self.haswater:
                 if self.target.grow():
                     self.changeWater()
+                    self.state = "Ice"
+                else:
+                    idx = plants.index(self.target)
+                    plants.pop(idx)
+                    plant_state.pop(idx)
+                    self.state = "Plant"
             elif self.target.type == "Ice" and not self.haswater:
                 if self.target.withdraw():
                     self.changeWater()
-            for i in range(len(states)):
-                if (self.state == states[i]):
-                    self.state = states[(i + 1) % len(states)]
-                    break
+                    self.state = "Plant"
+                else:
+                    idx = ice_patches.index(self.target)
+                    ice_patches.pop(idx)
+                    ice_state.pop(idx)
+                    self.state = "Ice"
+            return True
+        elif self.state == "Waiting for Ice" or self.state == "Waiting for Plant":
+            return True
+        else:
+            return False
 
 class obstacle:
     def __init(self, x, y, radius):
@@ -96,7 +107,10 @@ robots = [robot("192.168.32.172", 5000, 0, 0, 2), robot("192.168.32.172", 5000, 
 anchors = [Point(0, 0), Point(0, 0)]  #AT tag 0 and 1 respectively
 obstacles = [obstacle(0, 0, 0), obstacle(0, 0, 0), obstacle(0, 0, 0)]
 plants = [plant("<INSERT IP HERE>", 0, 0, 0, 0)]
+plant_state = [False] # is a robot currently targeting this plant?
+
 ice_patches = [ice(0, 0, 4)] # 4 for now
+ice_state = [False] # is a robot currently targeting this ice?
 
 field_width = 8  #scales x dimension of relative coordinates
 field_length = 8 #scales y dimension of relative coordinates
@@ -104,6 +118,23 @@ robotcount = 2  #predefined number of robots (prevent detection of extraneous ta
 camera_port = 8
 
 sockets = []
+
+def setNewTarget(robot):
+    if robot.state == "Ice":
+        for idx, ice in ice_patches:
+            if not ice_state[idx]:
+                robot.setTarget(ice)
+                return
+        robot.state = "Waiting for Ice"
+    elif robot.state == "Plant":
+        for idx, plant in plants:
+            if not plant_state[idx]:
+                robot.setTarget(plant)
+                return
+        robot.state = "Waiting for Plant"
+
+    # if it doesn't find any available, we may need to just keep waiting
+        
 
 def connect(system): #systems are the arrays with objects with have .IP and .port (robots, plants)
     for item in system:
@@ -121,9 +152,10 @@ if __name__ == "__main__":
     matrix = []
     row = 0
     for robot in robots:
+        robot.setState("Ice")
         matrix.append([])
-        for plant in plants:
-            matrix[row].append((math.sqrt((robot.coords.x-plant.coords.x)**2 + (robot.coords.y-plant.coords.y)**2)))
+        for ice in ice_patches:
+            matrix[row].append((math.sqrt((robot.coords.x-ice.coords.x)**2 + (robot.coords.y-ice.coords.y)**2)))
         row+=1
     
     m = Munkres()
@@ -131,7 +163,7 @@ if __name__ == "__main__":
     #print_matrix(matrix, msg='Lowest cost through this matrix:')
     total = 0
     for row, column in indexes:
-        robots[row].setTarget(plants[column].coords.x, plants[column].coords.y)
+        robots[row].setTarget(ice_patches[column].coords.x, ice_patches[column].coords.y)
         #value = matrix[row][column]
         #total += value
         #print(f'({row}, {column}) -> {value}')
@@ -139,7 +171,8 @@ if __name__ == "__main__":
         
     while True:
         for i in range(len(robots)):
-            robots[i].changeState()
+            if robots[i].changeState(): # if we have arrived at target, we want to set a new target
+                setNewTarget(robots[i])
             velocity = get_velocity(robots[i], obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10)
             write(sockets[i], "vx: " + velocity[0] + ", vy: " + velocity[1])
         updRobotPos(camera_port, robots, anchors, field_width)
