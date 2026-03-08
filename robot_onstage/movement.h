@@ -12,8 +12,9 @@ struct Motor {
   uint8_t rpin;
   void speed(int val);
 };
-extern Motor Lmotor;
-extern Motor Rmotor;
+extern Motor Motor1;
+extern Motor Motor2;
+extern Motor Motor3;
 
 void motor(int, int, int);
 void vmotor(float Vx, float Vy, float rotation);
