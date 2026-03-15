@@ -2,9 +2,6 @@ import random
 import math
 import numpy as np
 
-from Onstage_Master import Point
-from Onstage_Master import robot
-
 def get_velocity(robot, obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10):
         #nominal controller
         v_nom = 1.0
@@ -21,11 +18,11 @@ def get_velocity(robot, obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, de
         B = []
         
         for obs in obstacles:
-            dx = robot.coords.x-obs[0]
-            dy = robot.coords.y - obs[1]
+            dx = robot.coords.x - obs.coords.x
+            dy = robot.coords.y - obs.coords.y
             dist_obs = sqrt(dx**2 + dy**2)
             
-            safe_buffer = obs[2]+detect_clearance
+            safe_buffer = obs.radius + detect_clearance
             if dist_obs < safe_buffer:
                 dh_dx = dx / dist_obs
                 dh_dy = dy / dist_obs
@@ -63,10 +60,7 @@ def get_velocity(robot, obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, de
             velocity = u.value
         
         return velocity
-
         
-        
-                
                 
 
 

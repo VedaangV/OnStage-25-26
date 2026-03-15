@@ -1,13 +1,16 @@
 ### import libraries ###
 import numpy as np
 import math
+import socket
 
 ### import subfiles ###
-from CBF import get_velocity
-from OnStage_Rcoords import updRobotPos
-from WifiComms import write, read
+#from CBF import get_velocity
+from OnStage_Rcoords import updTagPos, initAnchors
+#from OnStage_WifiComms import write, read
 
-states = ["ice", "deposit", "withdraw", "plant"]  #!tentative #deposit and withdraw refer to moving water in and out of base station
+# from munkres import Munkres, print_matrix
+
+MAX_PLANT_GROWTH = 4
 
 ### objects ###
 class Point:
@@ -28,52 +31,118 @@ class robot:
         self.IP = IP;
         self.port = port
         self.coords = Point(x, y)
+        self.target = Point(0, 0)
+        self.rotation = 0
         self.haswater = False
-        self.state = "ice"
+        self.state = "Ice"
         self.tag = tag;
-    def setTarget(x, y):
-        self.target = Point(x, y)
-    def changeWater():
+    def setTarget(self, target):
+        self.target = target
+    def changeWater(self):
         self.haswater = not self.haswater
-    def atTarget():
-        return (math.sqrt((self.x-self.targetX)**2 + (self.y-self.targetY)**2) < 0.5)  #!tentative
+    def atTarget(self):
+        return (math.sqrt((self.coords.x-self.target.x)**2 + (self.coords.y-self.target.y)**2) < 0.5)  #!tentative
     
-    def setState(int s): #set state manually
-        self.state = states[s]
-    def changeState(): #change state after completing current task
-        if (self.atTarget == True):
-            self.changeWater()
-            for i in range(len(states)):
-                if (self.state == states[i]):
-                    self.state == states[(i + 1) % len(states)]
+    def setState(self, s): #set state manually
+        self.state = s
+#     def changeState(self): #change state after completing current task
+#         if (self.atTarget == True):
+#             if self.state == "Plant" and self.haswater:
+#                 if self.target.grow():
+#                     self.changeWater()
+#                     self.state = "Ice"
+#                 else:
+#                     idx = plants.index(self.target)
+#                     plants.pop(idx)
+#                     plant_state.pop(idx)
+#                     self.state = "Plant"
+#             elif self.state == "Ice" and not self.haswater:
+#                 if self.target.withdraw():
+#                     self.changeWater()
+#                     self.state = "Plant"
+#                 else:
+#                     idx = ice_patches.index(self.target)
+#                     ice_patches.pop(idx)
+#                     ice_state.pop(idx)
+#                     self.state = "Ice"
+#             return True
+#         elif self.state == "Waiting for Ice" or self.state == "Waiting for Plant":
+#             return True
+#         else:
+#             return False
+
+class anchor:
+    def __init__(self, x, y, tag):
+        self.coords = Point(x, y)
+        self.tag = tag
 
 class obstacle:
-    def __init(self, x, y, radius):
+    def __init__(self, x, y, radius):
         self.coords = Point(x, y)
         self.radius = radius
 
 class plant:
-    def __init__(self, IP, port, x, y, level):
+    def __init__(self, IP, port, x, y, tag, level):
         self.IP = IP;
         self.port = port
         self.coords = Point(x, y)
+        self.tag = tag
+        self.available = True
         self.level = level
+        self.type = "Plant"
+
+    def grow(self):
+        if (self.level < MAX_PLANT_GROWTH):
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect((self.IP, self.port))
+            write(sock, 'G')
+            return True
+        return False
         
 class ice:
     def __init__(self, x, y, level):
         self.coords = Point(x, y)
+        self.available = True
         self.level = level
+        self.type = "Ice"
 
-robots = [robot("192.168.32.172", 5000, 0, 0, 2), robot("192.168.32.172", 5000, 0, 0, 3)] 
-anchors = [Point(0, 0), Point(0, 0)]  #AT tag 0 and 1 respectively
+    def withdraw(self):
+        if (self.level <= 0):
+            return False
+        self.level = self.level - 1
+        return True
+
+robots = [robot("192.168.32.172", 5000, 0, 0, 4), robot("192.168.32.172", 5000, 0, 0, 5)]   #AT tag 4-5
+anchors = [anchor(0, 0, 0), anchor(0, 0, 1), anchor(0, 0, 2), anchor(0, 0, 3)]  #AT tag 0-3
+
 obstacles = [obstacle(0, 0, 0), obstacle(0, 0, 0), obstacle(0, 0, 0)]
-plants = [plant("<INSERT IP HERE>", 0, 0, 0, 0)]
+plants = [plant("<INSERT IP HERE>", 0, 0, 0, 8, 0)]
+icepatches = [ice(0, 0, 0)]
 
 field_width = 8  #scales x dimension of relative coordinates
 field_length = 8 #scales y dimension of relative coordinates
 robotcount = 2  #predefined number of robots (prevent detection of extraneous tags)
 
+camera_port = 0
+
 sockets = []
+
+def setNewTarget(robot):
+    if robot.state == "Ice":
+        for idx, ice in ice_patches:
+            if not ice_state[idx]:
+                robot.setTarget(ice)
+                return
+        robot.state = "Waiting for Ice"
+    elif robot.state == "Plant":
+        for idx, plant in plants:
+            if not plant_state[idx]:
+                robot.setTarget(plant)
+                return
+        robot.state = "Waiting for Plant"
+
+    # if it doesn't find any available, we may need to just keep waiting
+        
 
 def connect(system): #systems are the arrays with objects with have .IP and .port (robots, plants)
     for item in system:
@@ -82,19 +151,45 @@ def connect(system): #systems are the arrays with objects with have .IP and .por
 
 ### main ###
 if __name__ == "__main__":
+    # initialize / get tag locations
+#     while (initAnchors(camera_port, anchors) == False):
+#         continue
+    initAnchors(camera_port, anchors)
+    
+#     updTagPos(camera_port, plants, anchors, field_width)
+#     updTagPos(camera_port, robots, anchors, field_width, True)
+    
+    # intial calculation of closest robot targets (minimal movement)
+    # use Hungarian algorithm (O(n^3)): uses cost matrix to maximize efficiency 
+
+#     #initialize cost matrix
+#     matrix = []
+#     row = 0
+#     for robot in robots:
+#         robot.setState("Ice")
+#         matrix.append([])
+#         for ice in ice_patches:
+#             matrix[row].append((math.sqrt((robot.coords.x-ice.coords.x)**2 + (robot.coords.y-ice.coords.y)**2)))
+#         row+=1
+#     
+#     m = Munkres()
+#     indexes = m.compute(matrix)
+#     #print_matrix(matrix, msg='Lowest cost through this matrix:')
+#     total = 0
+#     for row, column in indexes:
+#         robots[row].setTarget(ice_patches[column].coords.x, ice_patches[column].coords.y)
+#         #value = matrix[row][column]
+#         #total += value
+#         #print(f'({row}, {column}) -> {value}')
+#     #print(f'total cost: {total}')
+        
     while True:
-        for idx, robot in enumerate(robots)):
-            robot.changeState()
-            velocity = get_velocity(robot, obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10)
-            write(sockets[idx], "vx: " + velocity[0] + ", vy: " + velocity[1])
-        updRobotPos(robots)
-        
-#Point(field_width*(abs(anchors[0].x - r.center[0]) / abs(anchors[0].x - anchors[1].x)), field_length*(abs(anchors[0].y - r.center[1]) / abs(anchors[0].y - anchors[1].y)))
-        
-        
-    
-    
-    
-    
-    
+        print(str(anchors[0].coords.x) + " " + str(anchors[0].coords.y))
+#         for i in range(len(robots)):
+#             if robots[i].changeState(): # if we have arrived at target, we want to set a new target
+#                 setNewTarget(robots[i])
+#             velocity = get_velocity(robots[i], obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10)
+#             write(sockets[i], "vx: " + velocity[0] + ", vy: " + velocity[1])
+#         updRobotPos(camera_port, robots, anchors, field_width)
+#         print(str(robots[0].coords.x) + " " + str(robots[0].coords.y))  #testing
     
