@@ -1,4 +1,10 @@
 #include <Wire.h>
+#include <WiFi.h>
+
+#define PORT 5000
+
+const char* ssid = "StormingKids";
+const char* pswd = "todbot1234";
 
 const int IN1 = 16; // input 1
 const int IN2 = 17; // input 2
@@ -29,12 +35,31 @@ void Motor::speed(int val) {
   }
 }
 
+WiFiServer server(PORT);
+WiFiClient client;
+
 String inputBuffer = "";
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   delay(1000);  
 
+  WiFi.mode(WIFI_STA);
+  WiFi.setHostname("PicoW2");
+  Serial.printf("Connecting to '%s' with '%s'\n", ssid, pswd);
+  WiFi.begin(ssid, pswd);
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(1000);
+  }
+  Serial.printf("\nConnected to WiFi\n\nConnect to server at %s:%d\n", WiFi.localIP().toString().c_str(), PORT);
+
+  server.begin();
   Wire.begin();
+
+  client = server.accept();
+  while (!client) {
+    client = server.accept();
+  }
 
 }
 
@@ -46,10 +71,16 @@ void growth() {
 }
 
 void loop() {
-  if (Serial.available()) {
-    char c = Serial.read();
-    if (c == 'G') {
-      growth();
-    }
+  while (!client.connected()) {
+    client = server.accept();
+  }
+  if (!client.available()) {
+    return;
+  }
+  char req = (char)client.read();
+  Serial.printf("Message received: ");
+  Serial.printf("%c\n", req);
+  if (req == 'G') {
+    growth();
   }
 }
