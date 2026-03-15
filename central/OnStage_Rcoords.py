@@ -13,11 +13,12 @@ import sys
 import os
 import cv2
 import numpy as np
-import math
 
 module_dir = os.path.abspath('/home/pi/onstage/python/apriltag/lib/python3.11/site-packages')
 sys.path.append(module_dir)
 import apriltag
+
+os.environ["OPENCV_LOG_LEVEL"] = "OFF"
 
 ### objects ###
 class Point:
@@ -61,21 +62,30 @@ def convertPos(original_coords, anc_topleft, anc_topright, anc_bottomleft, field
     new_coords = Point(field_size*(abs(anc_topleft.x - original_coords.x) / abs(anc_topleft.x - anc_topright.x)), field_size*(abs(anc_topleft.y - original_coords.y) / abs(anc_topleft.y - anc_bottomleft.y)))
     return new_coords
 
-def initAnchors(camport, anchors):
-    ### setup camera ###
-    camera_port = camport
-    camera_width = 640; camera_height = 480
-    camera_fps = 30;
-
-    cam = cv2.VideoCapture(camera_port)
-    cam.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
-    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
-    cam.set(cv2.CAP_PROP_FPS, camera_fps)
-    cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-    if not cam.isOpened():
-        print("Failed to open camera")
-        exit()
+def displayTags(results, img):
+    ### draw bounding boxes and info of ATs ###
+    for r in results:
+        # get points
+        (ptA, ptB, ptC, ptD) = r.corners
+        ptB = (int(ptB[0]), int(ptB[1]))
+        ptC = (int(ptC[0]), int(ptC[1]))
+        ptD = (int(ptD[0]), int(ptD[1]))
+        ptA = (int(ptA[0]), int(ptA[1]))
+        # draw lines
+        cv2.line(img, ptA, ptB, (0, 255, 0), 2)
+        cv2.line(img, ptB, ptC, (0, 255, 0), 2)
+        cv2.line(img, ptC, ptD, (0, 255, 0), 2)
+        cv2.line(img, ptD, ptA, (0, 255, 0), 2)
+        # draw center
+        (cX, cY) = (int(r.center[0]), int(r.center[1]))
+        cv2.circle(img, (cX, cY), 5, (0, 0, 255), -1)
+        # draw tag family
+        tagFamily = r.tag_family.decode("utf-8")
+        cv2.putText(img, (str(r.tag_id) + " " + tagFamily), (ptA[0], ptA[1] - 15),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+    return img
     
+def initAnchors(cam, anchors):
     ### get image as RGB and GRAY ###
     ret, frame = cam.read()
     if not ret:
@@ -98,26 +108,16 @@ def initAnchors(camport, anchors):
                 anchors[i].coords = Point(r.center[0], r.center[1])
                 break
             
-    cam.release()
+    rgb = displayTags(results, rgb)
+    cv2.imshow("Camera", rgb)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        return
+        
     if (tags_detected == len(anchors)):
         return True
     return False
     
-def updTagPos(camport, group, anchors, field_size, get_rotation = False):
-    ### setup camera ###
-    camera_port = camport
-    camera_width = 640; camera_height = 480
-    camera_fps = 30;
-
-    cam = cv2.VideoCapture(camera_port)
-    cam.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
-    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
-    cam.set(cv2.CAP_PROP_FPS, camera_fps)
-    cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-    if not cam.isOpened():
-        print("Failed to open camera")
-        exit()
-    
+def updTagPos(cam, group, anchors, field_size, get_rotation = False):
     ### get image as RGB and GRAY ###
     ret, frame = cam.read()
     if not ret:
@@ -130,7 +130,7 @@ def updTagPos(camport, group, anchors, field_size, get_rotation = False):
     options = apriltag.DetectorOptions(families="tag36h11") #setup AT
     detector = apriltag.Detector(options) #setup AT
     results = detector.detect(gray)
-
+    
     ### update robot x and y values ###
     for r in results:
         for i in range(len(group)):
@@ -142,5 +142,8 @@ def updTagPos(camport, group, anchors, field_size, get_rotation = False):
                     group[i].rotation = apriltag_rot(r)
                 break
             
-    cam.release()
+    rgb = displayTags(results, rgb)
+    cv2.imshow("Camera", rgb)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        return
     return
