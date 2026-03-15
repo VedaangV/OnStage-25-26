@@ -2,11 +2,12 @@
 import numpy as np
 import math
 import socket
+import cv2
 
 ### import subfiles ###
 #from CBF import get_velocity
 from OnStage_Rcoords import updTagPos, initAnchors
-#from OnStage_WifiComms import write, read
+from OnStage_WifiComms import wifi_write, wifi_read
 
 # from munkres import Munkres, print_matrix
 
@@ -89,28 +90,26 @@ class plant:
         self.tag = tag
         self.available = True
         self.level = level
-        self.type = "Plant"
 
-    def grow(self):
-        if (self.level < MAX_PLANT_GROWTH):
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((self.IP, self.port))
-            write(sock, 'G')
-            return True
-        return False
+#     def grow(self):
+#         if (self.level < MAX_PLANT_GROWTH):
+#             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#             sock.connect((self.IP, self.port))
+#             write(sock, 'G')
+#             return True
+#         return False
         
 class ice:
     def __init__(self, x, y, level):
         self.coords = Point(x, y)
         self.available = True
         self.level = level
-        self.type = "Ice"
 
-    def withdraw(self):
-        if (self.level <= 0):
-            return False
-        self.level = self.level - 1
-        return True
+#     def withdraw(self):
+#         if (self.level <= 0):
+#             return False
+#         self.level = self.level - 1
+#         return True
 
 robots = [robot("192.168.32.172", 5000, 0, 0, 4), robot("192.168.32.172", 5000, 0, 0, 5)]   #AT tag 4-5
 anchors = [anchor(0, 0, 0), anchor(0, 0, 1), anchor(0, 0, 2), anchor(0, 0, 3)]  #AT tag 0-3
@@ -123,7 +122,19 @@ field_width = 8  #scales x dimension of relative coordinates
 field_length = 8 #scales y dimension of relative coordinates
 robotcount = 2  #predefined number of robots (prevent detection of extraneous tags)
 
+### setup camera ###
 camera_port = 0
+camera_width = 640; camera_height = 480
+camera_fps = 30;
+
+cam = cv2.VideoCapture(camera_port)
+cam.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
+cam.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
+cam.set(cv2.CAP_PROP_FPS, camera_fps)
+cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+if not cam.isOpened():
+    print("Failed to open camera")
+    exit()
 
 sockets = []
 
@@ -152,10 +163,14 @@ def connect(system): #systems are the arrays with objects with have .IP and .por
 ### main ###
 if __name__ == "__main__":
     # initialize / get tag locations
-#     while (initAnchors(camera_port, anchors) == False):
-#         continue
-    initAnchors(camera_port, anchors)
+    while (initAnchors(cam, anchors) == False):
+        print("Top left: " + str(anchors[0].coords.x) + " " + str(anchors[0].coords.y))
+        print("Top right: " + str(anchors[1].coords.x) + " " + str(anchors[1].coords.y))
+        print("Bottom left: " + str(anchors[2].coords.x) + " " + str(anchors[2].coords.y))
+        print("Bottom right: " + str(anchors[3].coords.x) + " " + str(anchors[3].coords.y))
+        continue
     
+    #******** next thing to work on ********#
 #     updTagPos(camera_port, plants, anchors, field_width)
 #     updTagPos(camera_port, robots, anchors, field_width, True)
     
@@ -184,12 +199,13 @@ if __name__ == "__main__":
 #     #print(f'total cost: {total}')
         
     while True:
-        print(str(anchors[0].coords.x) + " " + str(anchors[0].coords.y))
 #         for i in range(len(robots)):
 #             if robots[i].changeState(): # if we have arrived at target, we want to set a new target
 #                 setNewTarget(robots[i])
 #             velocity = get_velocity(robots[i], obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10)
 #             write(sockets[i], "vx: " + velocity[0] + ", vy: " + velocity[1])
-#         updRobotPos(camera_port, robots, anchors, field_width)
-#         print(str(robots[0].coords.x) + " " + str(robots[0].coords.y))  #testing
+        updTagPos(cam, robots, anchors, field_width, True)
+        print(str(robots[0].coords.x) + " " + str(robots[0].coords.y))  #testing
     
+    cv2.destroyAllWindows()
+    cam.release()
