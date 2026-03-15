@@ -9,14 +9,19 @@ sock.connect((PICO_IP, PORT))
 print("Connected to Pico W")
 
 def wifi_write(message):
-    sock.send(message.encode())
+    errorval = sock.send(message.encode())
+    if (errorval == 0):
+        print("Failed to send message")
+        return -1
     print("Sent:", message.strip())
     return
         
 def wifi_read():
     reply = sock.recv(1024).decode().strip()
-    print("Pico replied:", reply)
-    return reply
+    if reply:
+        print("Pico replied:", reply)
+        return reply
+    return -1
 
 if __name__ == "__main__":
     try:
