@@ -60,8 +60,50 @@ def apriltag_rot(result):
 def convertPos(original_coords, anc_topleft, anc_topright, anc_bottomleft, field_size):
     new_coords = Point(field_size*(abs(anc_topleft.x - original_coords.x) / abs(anc_topleft.x - anc_topright.x)), field_size*(abs(anc_topleft.y - original_coords.y) / abs(anc_topleft.y - anc_bottomleft.y)))
     return new_coords
+
+def initAnchors(camport, anchors):
+    ### setup camera ###
+    camera_port = camport
+    camera_width = 640; camera_height = 480
+    camera_fps = 30;
+
+    cam = cv2.VideoCapture(camera_port)
+    cam.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
+    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
+    cam.set(cv2.CAP_PROP_FPS, camera_fps)
+    cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+    if not cam.isOpened():
+        print("Failed to open camera")
+        exit()
     
-def updRobotPos(camport, robots, anchors, field_size):
+    ### get image as RGB and GRAY ###
+    ret, frame = cam.read()
+    if not ret:
+        print("Failed to get camera frame")
+        return False
+    rgb = frame
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    
+    ### get AT detection results ###
+    options = apriltag.DetectorOptions(families="tag36h11") #setup AT
+    detector = apriltag.Detector(options) #setup AT
+    results = detector.detect(gray)
+
+    ### update robot x and y values ###
+    tags_detected = 0
+    for r in results:
+        for i in range(len(anchors)):
+            if (anchors[i].tag == r.tag_id):
+                tags_detected = tags_detected + 1
+                anchors[i].coords = Point(r.center[0], r.center[1])
+                break
+            
+    cam.release()
+    if (tags_detected == len(anchors)):
+        return True
+    return False
+    
+def updTagPos(camport, group, anchors, field_size, get_rotation = False):
     ### setup camera ###
     camera_port = camport
     camera_width = 640; camera_height = 480
@@ -91,12 +133,13 @@ def updRobotPos(camport, robots, anchors, field_size):
 
     ### update robot x and y values ###
     for r in results:
-        for i in range(len(robots)):
-            if (robots[i].tag == r.tag_id):
+        for i in range(len(group)):
+            if (group[i].tag == r.tag_id):
                 p = Point(r.center[0], r.center[1])
-                p = convertPos(p, anchors[0], anchors[1], anchors[2], field_size)
-                robots[i].coords = p
-                robots[i].rotation = apriltag_rot(r)
+                p = convertPos(p, anchors[0].coords, anchors[1].coords, anchors[2].coords, field_size)
+                group[i].coords = p
+                if (get_rotation == True):
+                    group[i].rotation = apriltag_rot(r)
                 break
             
     cam.release()
