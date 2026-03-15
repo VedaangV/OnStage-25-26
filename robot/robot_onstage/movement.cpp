@@ -2,7 +2,7 @@
 #include "movement.h"
 
 //set motor pins
-Motor Motor1{8, 9}, Motor2{11, 10}, Motor3{12, 13};
+Motor Motor1{8, 9, A0}, Motor2{10, 11, A1}, Motor3{12, 13, A2};
 
 //motor functions
 //motor mapping
@@ -15,13 +15,15 @@ void Motor::speed(int val) {
   int map_speed = cmap(abs(val), 0, 100, 0, 255);
 
   if (val > 0) {
-    analogWrite(fpin, map_speed);
-    analogWrite(rpin, 0);
+    digitalWrite(fpin, HIGH);
+    digitalWrite(rpin, LOW);
   }
   else {
-    analogWrite(fpin, 0);
-    analogWrite(rpin, map_speed);
+    digitalWrite(fpin, LOW);
+    digitalWrite(rpin, HIGH);
   }
+  analogWrite(control, map_speed);
+
 }
 
 //function: set motor speeds

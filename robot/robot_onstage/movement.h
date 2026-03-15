@@ -10,10 +10,12 @@ void speed(int);
 struct Motor {
   uint8_t fpin;
   uint8_t rpin;
+  uint8_t control;
   void speed(int val);
 };
-extern Motor Lmotor;
-extern Motor Rmotor;
+extern Motor Motor1;
+extern Motor Motor2;
+extern Motor Motor3;
 
 void motor(int, int, int);
 void vmotor(float Vx, float Vy, float rotation);
