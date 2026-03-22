@@ -20,7 +20,7 @@ def get_velocity(robot, obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, de
         for obs in obstacles:
             dx = robot.coords.x - obs.coords.x
             dy = robot.coords.y - obs.coords.y
-            dist_obs = sqrt(dx**2 + dy**2)
+            dist_obs = math.sqrt(dx**2 + dy**2)
             
             safe_buffer = obs.radius + detect_clearance
             if dist_obs < safe_buffer:
@@ -60,7 +60,3 @@ def get_velocity(robot, obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, de
             velocity = u.value
         
         return velocity
-        
-                
-
-
