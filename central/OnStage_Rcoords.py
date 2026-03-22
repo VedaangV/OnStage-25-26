@@ -13,6 +13,7 @@ import sys
 import os
 import cv2
 import numpy as np
+import math
 
 module_dir = os.path.abspath('/home/pi/onstage/python/apriltag/lib/python3.11/site-packages')
 sys.path.append(module_dir)
@@ -90,7 +91,7 @@ def initAnchors(cam, anchors):
     ret, frame = cam.read()
     if not ret:
         print("Failed to get camera frame")
-        return False
+        return -1
     rgb = frame
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
@@ -111,11 +112,11 @@ def initAnchors(cam, anchors):
     rgb = displayTags(results, rgb)
     cv2.imshow("Camera", rgb)
     if cv2.waitKey(1) & 0xFF == ord('q'):
-        return
+        return 1
         
     if (tags_detected == len(anchors)):
-        return True
-    return False
+        return 0
+    return 0
     
 def updTagPos(cam, group, anchors, field_size, get_rotation = False):
     ### get image as RGB and GRAY ###
