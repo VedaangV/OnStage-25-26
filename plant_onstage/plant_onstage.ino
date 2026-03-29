@@ -6,6 +6,9 @@
 const char* ssid = "StormingKids";
 const char* pswd = "todbot1234";
 
+
+const int ENA = 14; // encoder 1
+const int ENB = 15; // encoder 2
 const int IN1 = 16; // input 1
 const int IN2 = 17; // input 2
 
@@ -21,6 +24,13 @@ int cmap(int val, int olow, int ohigh, int mlow, int mhigh) {
   return constrain(map(val, olow, ohigh, mlow, mhigh), mlow, mhigh);
 }
 
+float encoderPos = 0;
+
+const int gearDiameter = 5.05; // cm
+const float TPR = 960; // 960 ticks per revolution
+
+double circumference = gearDiameter*PI;
+
 //motor speed
 void Motor::speed(int val) {
   int map_speed = cmap(abs(val), 0, 100, 0, 255);
@@ -35,14 +45,25 @@ void Motor::speed(int val) {
   }
 }
 
+void updPos() {
+  if (digitalRead(ENB) == HIGH) {
+    encoderPos++;
+  } else {
+    encoderPos--;
+  }
+}
+
 WiFiServer server(PORT);
 WiFiClient client;
 
-String inputBuffer = "";
 void setup() {
   Serial.begin(115200);
   delay(1000);  
 
+  pinMode(ENA, INPUT_PULLUP);
+  pinMode(ENB, INPUT_PULLUP);
+
+  /* Wifi stuff */
   WiFi.mode(WIFI_STA);
   WiFi.setHostname("PicoW2");
   Serial.printf("Connecting to '%s' with '%s'\n", ssid, pswd);
@@ -52,6 +73,8 @@ void setup() {
     delay(1000);
   }
   Serial.printf("\nConnected to WiFi\n\nConnect to server at %s:%d\n", WiFi.localIP().toString().c_str(), PORT);
+
+  attachInterrupt(digitalPinToInterrupt(ENA), updPos, RISING);
 
   server.begin();
   Wire.begin();
@@ -63,14 +86,24 @@ void setup() {
 
 }
 
+float calcDisplacement() {
+  return encoderPos * circumference/TPR;
+}
+
 void growth() {
-  plant.speed(25);
-  delay(1000);
+  plant.speed(50);
+  float initialDisplacement = calcDisplacement();
+  float disp = 0;
+  int loops = 0;
+  while (disp < 1.0) {
+    disp = abs(initialDisplacement-calcDisplacement());
+    delay(5);
+  }
   plant.speed(0);
-  delay(1000);
 }
 
 void loop() {
+  /* Testing w/ wifi*/
   while (!client.connected()) {
     client = server.accept();
   }
@@ -83,4 +116,10 @@ void loop() {
   if (req == 'G') {
     growth();
   }
+  client.stop();
+  /* Testing w/out wifi */
+  //growth();
+  // Serial.printf("Encoder data: %d %d -> %ld\n", digitalRead(ENA), digitalRead(ENB), encoderPos);
+  // Serial.printf("Actual position: %f cm\n", encoderPos * circumference/TPR);
+  //delay(2000);
 }
