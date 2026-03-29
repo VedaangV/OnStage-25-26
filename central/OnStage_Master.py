@@ -49,8 +49,8 @@ class robot:
     def setState(self, s): #set state manually
         self.state = s
 #     def changeState(self): #change state after completing current task
-#         if (self.atTarget == True):
-#             if self.state == "plant" and self.haswater:
+#         if (self.atTarget() == True):
+#             if self.state == "Plant" and self.haswater:
 #                 if self.target.grow():
 #                     self.changeWater()
 #                     self.state = "Ice"
