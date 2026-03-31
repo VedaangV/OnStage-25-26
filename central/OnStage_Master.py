@@ -117,12 +117,13 @@ class ice:
 robots = [robot("192.168.32.172", 5000, -1, -1, 4)]   #AT tag 4-5
 anchors = [anchor(-1, -1, 0), anchor(-1, -1, 1), anchor(-1, -1, 2), anchor(-1, -1, 3)]  #AT tag 0-3
 
-obstacles = [] #obstacle(-1, -1, 0), obstacle(-1, -1, 0), obstacle(-1, -1, 0)]
+obstacles = [obstacle(40, 40, 3)] #obstacle(-1, -1, 0), obstacle(-1, -1, 0), obstacle(-1, -1, 0)]
 plants = [plant("<INSERT IP HERE>", 0, -1, -1, 5, 0)]
 icepatches = [ice(-1, -1, 0)]
 
 field_width = 80  #scales x dimension of relative coordinates
-field_length = 80 #scales y dimension of relative coordinates
+field_length = 80  #scales y dimension of relative coordinates
+baseV = 0.33 #base velocity of robot, m/s
 
 ### setup camera ###
 camera_port = 0
@@ -233,7 +234,7 @@ if __name__ == "__main__":
 
     if (plants[0].coords.x != -1 and plants[0].coords.y != -1):
         robots[0].setTarget(plants[0].coords)
-        
+    
     while True:
 #             if robots[i].changeState(): # if we have arrived at target, we want to set a new target
 #                 setNewTarget(robots[i])
@@ -253,10 +254,14 @@ if __name__ == "__main__":
                 print("Point coords: " + f"{points[idx][0]:.2f}" + ", " + f"{points[idx][1]:.2f}") #testing#
                 dx = points[idx][0] - robots[0].coords.x
                 dy = points[idx][1] - robots[0].coords.y
+                d = math.sqrt(dx**2 + dy**2)
                 print("dx: " + f"{dx:.2f}" + ", " + "dy: " + f"{dy:.2f}") #testing#
                 print("dist: " + f"{robots[0].coords.distance_to(Point(points[idx][0], points[idx][1])):.2f}") #testing#
                 print('\n') #testing#
-                #write(sockets[i], "vx: " + velocity[0] + ", vy: " + velocity[1])
+                V = baseV
+                Vx = V * dx / d
+                Vy = V * dy / d
+                #write(sockets[i], f"{Vx:.2f}" + "," + f"{Vy:.2f}")
         
         print("\n***approaching target***") #testing#
         ### close distance to target ###
@@ -266,9 +271,15 @@ if __name__ == "__main__":
             print("Target coords: " + f"{robots[0].target.x:.2f}" + ", " + f"{robots[0].target.y:.2f}") #testing#
             dx = robots[0].target.x - robots[0].coords.x
             dy = robots[0].target.y - robots[0].coords.y
+            d = math.sqrt(dx**2 + dy**2)
             print("dx: " + f"{dx:.2f}" + ", " + "dy: " + f"{dy:.2f}") #testing# 
             print('\n') #testing#
-            #write(sockets[i], "vx: " + velocity[0] + ", vy: " + velocity[1])
+            V = baseV
+            Vx = V * dx / d
+            Vy = V * dy / d
+            #write(sockets[i], f"{Vx:.2f}" + "," + f"{Vy:.2f}")
+        
+        #write(sockets[i], "0,0")
         break #switch target here
     
     cv2.destroyAllWindows()
