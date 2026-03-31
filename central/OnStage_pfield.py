@@ -112,8 +112,7 @@ def pfield_path(robot, obstacles, field_size):
         if ((segments[idx][0][0] == robot.coords.x) and (segments[idx][0][1] == robot.coords.y)):
             start = idx
             break
-    start = start + 1
-    for idx in range(len(segments) - start + 1):
+    for idx in range(len(segments) - start):
         point = [segments[start + idx][0][0], segments[start + idx][0][1]]
         points.append(point)
         
