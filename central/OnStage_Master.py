@@ -5,9 +5,10 @@ import socket
 import cv2
 
 ### import subfiles ###
-from OnStage_CBF import get_velocity
+#! from OnStage_CBF import get_velocity
 from OnStage_Rcoords import updTagPos, initAnchors
 #from OnStage_WifiComms import wifi_write, wifi_read
+from OnStage_pfield import pfield_path
 
 from munkres import Munkres, print_matrix
 
@@ -44,12 +45,12 @@ class robot:
     def changeWater(self):
         self.haswater = not self.haswater
     def atTarget(self):
-        return (self.coords.distance_to(self.target) < 0.5) #!tentative
+        return (self.coords.distance_to(self.target) < 1) #!tentative
     
     def setState(self, s): #set state manually
         self.state = s
 #     def changeState(self): #change state after completing current task
-#         if (self.atTarget() == True):
+#         if (self.atTarget == True):
 #             if self.state == "Plant" and self.haswater:
 #                 if self.target.grow():
 #                     self.changeWater()
@@ -116,13 +117,12 @@ class ice:
 robots = [robot("192.168.32.172", 5000, -1, -1, 4)]   #AT tag 4-5
 anchors = [anchor(-1, -1, 0), anchor(-1, -1, 1), anchor(-1, -1, 2), anchor(-1, -1, 3)]  #AT tag 0-3
 
-obstacles = [obstacle(-1, -1, 0), obstacle(-1, -1, 0), obstacle(-1, -1, 0)]
+obstacles = [] #obstacle(-1, -1, 0), obstacle(-1, -1, 0), obstacle(-1, -1, 0)]
 plants = [plant("<INSERT IP HERE>", 0, -1, -1, 5, 0)]
 icepatches = [ice(-1, -1, 0)]
 
-field_width = 8  #scales x dimension of relative coordinates
-field_length = 8 #scales y dimension of relative coordinates
-robotcount = 1  #predefined number of robots (prevent detection of extraneous tags)
+field_width = 80  #scales x dimension of relative coordinates
+field_length = 80 #scales y dimension of relative coordinates
 
 ### setup camera ###
 camera_port = 0
@@ -198,8 +198,11 @@ if __name__ == "__main__":
         continue
     
     # plants, robots
-    updTagPos(cam, plants, anchors, field_width)
-    updTagPos(cam, robots, anchors, field_width, True)
+    while (robots[0].coords.x == -1 or robots[0].coords.y == -1 or plants[0].coords.x == -1 or plants[0].coords.y == -1):
+        updTagPos(cam, plants, anchors, field_width)
+        updTagPos(cam, robots, anchors, field_width, True)
+        print("Robot 0 coords: " + str(robots[0].coords.x) + " " + str(robots[0].coords.y))
+        print("Plant 0 coords: " + str(plants[0].coords.x) + " " + str(plants[0].coords.y))
     
     # ice, obstacles
     
@@ -230,19 +233,43 @@ if __name__ == "__main__":
 
     if (plants[0].coords.x != -1 and plants[0].coords.y != -1):
         robots[0].setTarget(plants[0].coords)
-    
-    # testing
-    print("Robot 0 coords: " + str(robots[0].coords.x) + " " + str(robots[0].coords.y))
-    print("Plant 0 coords: " + str(plants[0].coords.x) + " " + str(plants[0].coords.y))
-    input("Press Enter to start")
         
     while True:
-        for i in range(len(robots)):
 #             if robots[i].changeState(): # if we have arrived at target, we want to set a new target
 #                 setNewTarget(robots[i])
-            velocity = get_velocity(robots[i], obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10)
-#             write(sockets[i], "vx: " + velocity[0] + ", vy: " + velocity[1])
-        updTagPos(cam, robots, anchors, field_width, True)
+            #velocity = get_velocity(robots[i], obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10)
+            #print("vx: " + str(velocity[0]) + ", vy: " + str(velocity[1]))
+        
+        ### get path of points to target ###
+        points = pfield_path(robots[0], obstacles, field_width)
+        print(points)
+        
+        print("\n***traversing path***") #testing#
+        ### send velocity from current position to next point ###
+        for idx in range(len(points)):
+            while (robots[0].coords.distance_to(Point(points[idx][0], points[idx][1])) >= 1):
+                updTagPos(cam, robots, anchors, field_width, True)
+                print("Robot 0 coords: " + f"{robots[0].coords.x:.2f}" + ", " + f"{robots[0].coords.y:.2f}") #testing#
+                print("Point coords: " + f"{points[idx][0]:.2f}" + ", " + f"{points[idx][1]:.2f}") #testing#
+                dx = points[idx][0] - robots[0].coords.x
+                dy = points[idx][1] - robots[0].coords.y
+                print("dx: " + f"{dx:.2f}" + ", " + "dy: " + f"{dy:.2f}") #testing#
+                print("dist: " + f"{robots[0].coords.distance_to(Point(points[idx][0], points[idx][1])):.2f}") #testing#
+                print('\n') #testing#
+                #write(sockets[i], "vx: " + velocity[0] + ", vy: " + velocity[1])
+        
+        print("\n***approaching target***") #testing#
+        ### close distance to target ###
+        while (robots[0].atTarget == False):
+            updTagPos(cam, robots, anchors, field_width, True)
+            print("Robot 0 coords: " + f"{robots[0].coords.x:.2f}" + ", " + f"{robots[0].coords.y:.2f}") #testing#
+            print("Target coords: " + f"{robots[0].target.x:.2f}" + ", " + f"{robots[0].target.y:.2f}") #testing#
+            dx = robots[0].target.x - robots[0].coords.x
+            dy = robots[0].target.y - robots[0].coords.y
+            print("dx: " + f"{dx:.2f}" + ", " + "dy: " + f"{dy:.2f}") #testing# 
+            print('\n') #testing#
+            #write(sockets[i], "vx: " + velocity[0] + ", vy: " + velocity[1])
+        break #switch target here
     
     cv2.destroyAllWindows()
     cam.release()
