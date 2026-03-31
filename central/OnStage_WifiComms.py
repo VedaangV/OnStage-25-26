@@ -1,62 +1,41 @@
-import random
-import math
-import numpy as np
+import socket
+import time
 
-def get_velocity(robot, obstacles, alpha=1.0, speed=0.10, obs_clearance=0.01, detect_clearance=0.10):
-        #nominal controller
-        v_nom = 1.0
-        dir = np.array(robot.target.x, robot.target.y) - np.array(robot.coords.x, robot.coords.y)
-        dist = np.linalg.norm(dir)
+PICO_IP = "192.168.32.209"  # StormingKids IP
+PORT = 5000
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect((PICO_IP, PORT))
+print("Connected to Pico W")
+
+def wifi_write(message):
+    errorval = sock.send(message.encode())
+    if (errorval == 0):
+        print("Failed to send message")
+        return -1
+    print("Sent:", message.strip())
+    return
         
-        if dist > 1e-6:
-            v_nom = speed * dir/dist
-        else:
-            v_nom = np.zeros(2)
-        
-        #CBF constraints
-        A = []
-        B = []
-        
-        for obs in obstacles:
-            dx = robot.coords.x - obs.coords.x
-            dy = robot.coords.y - obs.coords.y
-            dist_obs = math.sqrt(dx**2 + dy**2)
+def wifi_read():
+    reply = sock.recv(1024).decode().strip()
+    if reply:
+        print("Pico replied:", reply)
+        return reply
+    return -1
+
+if __name__ == "__main__":
+    try:
+        while True:
+            message = "Hello world\n"
+            wifi_write(message)
+            time.sleep(1)
+            reply = wifi_read()
+            print(reply)
             
-            safe_buffer = obs.radius + detect_clearance
-            if dist_obs < safe_buffer:
-                dh_dx = dx / dist_obs
-                dh_dy = dy / dist_obs
-                h = dist_obs-obs[2] - obs_clearance
-                
-                A.append([-dh_dx, -dh_dy])
-                B.append(alpha * h)
-            
-            A = np.array(A)
-            B = np.array(B)
-            
-        u = cp.Variable(2)
-        
-        objective = cp.Minimize(cp.sum_squares(u - v_nom))
-        constraints = []
-        
-        if len(A) > 0:
-            constraints.append(A @ u <= B)
-            
-        v_max = 0.05
-        constraints += [
-            u[0] >= -v_max,
-            u[0] <= v_max,
-            u[1] >= -v_max,
-            u[1] <= v_ma
-            
-        ]
-        
-        prob = cp.Problem(objective, constraints)
-        prob.solve(solver=cp.OSQP, warm_start = True)
-        
-        if u is None:
-            velocity = v_nom
-        else:
-            velocity = u.value
-        
-        return velocity
+            if 0xFF == ord('q'): 
+                break
+
+    except KeyboardInterrupt:
+        print("Closing connection.")
+
+    sock.close()          
