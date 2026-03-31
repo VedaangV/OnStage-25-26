@@ -60,7 +60,7 @@ def apriltag_rot(result):
     return deg
     
 def convertPos(original_coords, anc_topleft, anc_topright, anc_bottomleft, field_size):
-    new_coords = Point(field_size*(abs(anc_topleft.x - original_coords.x) / abs(anc_topleft.x - anc_topright.x)), field_size*(abs(anc_topleft.y - original_coords.y) / abs(anc_topleft.y - anc_bottomleft.y)))
+    new_coords = Point(field_size*(abs(anc_topleft.x - original_coords.x) / abs(anc_topleft.x - anc_topright.x)), field_size*(abs(anc_bottomleft.y - original_coords.y) / abs(anc_topleft.y - anc_bottomleft.y)))
     return new_coords
 
 def displayTags(results, img):
@@ -113,9 +113,6 @@ def initAnchors(cam, anchors):
     cv2.imshow("Camera", rgb)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         return 1
-        
-    if (tags_detected == len(anchors)):
-        return 0
     return 0
     
 def updTagPos(cam, group, anchors, field_size, get_rotation = False):
