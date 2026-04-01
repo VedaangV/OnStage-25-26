@@ -23,9 +23,8 @@ def add_goal (X, Y, s, r, delx, dely, loc, gridsize):
   return delx, dely
 
 ### add obstacle object to field ###
-def add_obstacle(X, Y, s, obs, delx, dely, goal, gridsize):
-  r = obs.radius
-  obstacle = [obs.coords.x, obs.coords.y]
+def add_obstacle(X, Y, s, r, delx, dely, loc, goal, gridsize):
+  obstacle = [loc[0], loc[1]]
   
   for i in range(len(X)):
     for j in range(len(Y)):
@@ -96,7 +95,9 @@ def pfield_path(robot, obstacles, field_size):
     plot_graph(X, Y, delx, dely , 'Goal', fig, ax, goal, r, 0, 'b')
     for idx, obs in enumerate(obstacles):
       s = 5 #
-      delx, dely, loc, r = add_obstacle(X, Y, s, obs, delx, dely, goal, gridsize)
+      r = obs.radius
+      loc = [obs.coords.x, obs.coords.y]
+      delx, dely, loc, r = add_obstacle(X, Y, s, r, delx, dely, loc, goal, gridsize)
       plot_graph(X, Y, delx, dely, 'Obstacle', fig, ax, loc, r, idx+1,'m') #
     
     plot_graph(X, Y, delx, dely , '', fig, ax, seek_points[0], 1, 0, 'r')
