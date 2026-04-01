@@ -145,3 +145,67 @@ def updTagPos(cam, group, anchors, field_size, get_rotation = False):
     if cv2.waitKey(1) & 0xFF == ord('q'):
         return
     return
+
+def updObsPos(cam, group, Lhsv, Uhsv, anchors, field_size):
+    ### get image as RGB ###
+    ret, frame = cam.read()
+    if not ret:
+        print("Failed to get camera frame")
+        return -1
+    
+    h, w, c = frame.shape
+    alpha = 1.3  #contrast
+    beta = -60  #brightness
+    frame = cv2.convertScaleAbs(frame, alpha=alpha, beta=beta) 
+    
+    ### HSV filter ###
+    frame_HSV = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    frame_threshold = cv2.inRange(frame_HSV, (Lhsv[0], Lhsv[1], Lhsv[2]), (Uhsv[0], Uhsv[1], Uhsv[2]))
+    
+    ### get contours
+    contours, hierarchy = cv2.findContours(frame_threshold, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)
+    
+    ctrs = np.zeros((h, w, 1), dtype=np.uint8)
+    ctrs = np.zeros((h, w, 1), dtype=np.uint8)
+    cv2.drawContours(ctrs, contours, -1, 255)
+    cv2.imshow("Camera", ctrs)
+    
+    ### get boundaries ###
+    if (len(contours) == 0):
+        return -1
+    for idx, item in enumerate(group):
+        if (idx >= len(contours)):
+            item.coords = Point(0, 0)
+            item.outline = []
+            item.radius = 0
+        cnt = contours[idx]
+        
+        M = cv2.moments(cnt)
+        if M["m00"] != 0:
+            centroid = Point(int(M['m10']/M['m00']), int(M['m01']/M['m00']))
+        else:
+            centroid = Point(0, 0)
+        centroid = convertPos(centroid, anchors[0].coords, anchors[1].coords, anchors[2].coords, field_size)
+        item.coords = centroid
+        
+        rect = cv2.minAreaRect(cnt)
+        box = cv2.boxPoints(rect)
+        minDist = 80
+        maxDist = 0
+        for i in range(len(box)):
+            point = Point(box[i][0], box[i][1])
+            point = convertPos(point, anchors[0].coords, anchors[1].coords, anchors[2].coords, field_size)
+            if (point.distance_to(centroid) < minDist):
+                minDist = point.distance_to(centroid)
+            if (point.distance_to(centroid) > maxDist):
+                maxDist = point.distance_to(centroid)
+        if (minDist == 80 or maxDist == 0):
+            return -1
+        item.radius = (minDist + maxDist) / 2
+        print(str(idx) + ": " + str(item.radius)) #testing#
+    print("\n") #testing#
+        
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        return 1
+    return 0
