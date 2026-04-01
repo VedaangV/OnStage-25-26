@@ -2,15 +2,14 @@
 import numpy as np
 import math
 import socket
+import time
 import cv2
+from munkres import Munkres, print_matrix
 
 ### import subfiles ###
-#! from OnStage_CBF import get_velocity
-from OnStage_Rcoords import updTagPos, initAnchors
+from OnStage_Rcoords import updTagPos, updObsPos, initAnchors
 #from OnStage_WifiComms import wifi_write, wifi_read
 from OnStage_pfield import pfield_path
-
-from munkres import Munkres, print_matrix
 
 MAX_PLANT_GROWTH = 4
 
@@ -35,6 +34,7 @@ class robot:
         self.IP = IP;
         self.port = port
         self.coords = Point(x, y)
+        self.path = [[-1, -1]]
         self.target = Point(-1, -1)
         self.rotation = 0
         self.haswater = False
@@ -84,7 +84,6 @@ class obstacle:
     def __init__(self, x, y, radius):
         self.coords = Point(x, y)
         self.radius = radius
-
 class plant:
     def __init__(self, IP, port, x, y, tag, level):
         self.IP = IP;
@@ -93,18 +92,18 @@ class plant:
         self.tag = tag
         self.available = True
         self.level = level
-
-#     def grow(self):
-#         if (self.level < MAX_PLANT_GROWTH):
-#             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#             sock.connect((self.IP, self.port))
-#             write(sock, 'G')
-#             return True
-#         return False
+    def grow(self):
+        if (self.level < MAX_PLANT_GROWTH):
+            if (wifi_write("G") == -1):
+                return False
+            else:
+                return True
+        return False
         
 class ice:
-    def __init__(self, x, y, level):
+    def __init__(self, x, y, tag, level):
         self.coords = Point(x, y)
+        self.tag = tag
         self.available = True
         self.level = level
 
@@ -119,7 +118,10 @@ anchors = [anchor(-1, -1, 0), anchor(-1, -1, 1), anchor(-1, -1, 2), anchor(-1, -
 
 obstacles = [obstacle(40, 40, 3)] #obstacle(-1, -1, 0), obstacle(-1, -1, 0), obstacle(-1, -1, 0)]
 plants = [plant("<INSERT IP HERE>", 0, -1, -1, 5, 0)]
-icepatches = [ice(-1, -1, 0)]
+icepatches = [ice(-1, -1, 0, 4)]
+
+obstacle_Lhsv = [0, 30, 200]
+obstacle_Uhsv = [20, 90, 255]
 
 field_width = 80  #scales x dimension of relative coordinates
 field_length = 80  #scales y dimension of relative coordinates
@@ -140,6 +142,27 @@ if not cam.isOpened():
     exit()
 
 sockets = []
+
+def followPath(robot):
+    while (robot.atTarget() == False):
+        if not robot.path:
+            robot.append([robot.target.x, robot.target.y])
+        while (robot.coords.distance_to(Point(robot.path[0][0], robot.path[0][1])) >= 1):
+            updTagPos(cam, robots, anchors, field_width, True)
+            print("Robot 0 coords: " + f"{robots[0].coords.x:.2f}" + ", " + f"{robots[0].coords.y:.2f}") #testing#
+            print("Point coords: " + f"{points[idx][0]:.2f}" + ", " + f"{points[idx][1]:.2f}") #testing#
+            dx = robot.path[0][0] - robot.coords.x
+            dy = robot.path[0][1] - robot.coords.y
+            d = math.sqrt(dx**2 + dy**2)
+            print("dx: " + f"{dx:.2f}" + ", " + "dy: " + f"{dy:.2f}") #testing#
+            print("dist: " + f"{robots[0].coords.distance_to(Point(points[idx][0], points[idx][1])):.2f}") #testing#
+            print('\n') #testing#
+            V = baseV
+            Vx = V * dx / d
+            Vy = V * dy / d
+            #wifi_write(f"{Vx:.2f}" + "," + f"{Vy:.2f}")
+        robot.path.pop(0)
+    return
 
 # def assignTargets(system): # system = plants or ice
 #     ### assign targets using matrix calculations ###
@@ -198,14 +221,16 @@ if __name__ == "__main__":
         print("Bottom right: " + str(anchors[3].coords.x) + " " + str(anchors[3].coords.y))
         continue
     
-    # plants, robots
+    # plants, ice, robots
     while (robots[0].coords.x == -1 or robots[0].coords.y == -1 or plants[0].coords.x == -1 or plants[0].coords.y == -1):
         updTagPos(cam, plants, anchors, field_width)
         updTagPos(cam, robots, anchors, field_width, True)
         print("Robot 0 coords: " + str(robots[0].coords.x) + " " + str(robots[0].coords.y))
         print("Plant 0 coords: " + str(plants[0].coords.x) + " " + str(plants[0].coords.y))
     
-    # ice, obstacles
+    # obstacles
+    while (updObsPos(cam, obstacles, obstacle_Lhsv, obstacle_Uhsv, anchors, field_width) == -1):
+        continue
     
 #     ### assign targets using matrix calculations ###
 #     # intial calculation of closest robot targets (minimal movement)
