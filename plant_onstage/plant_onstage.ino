@@ -1,7 +1,7 @@
 #include <Wire.h>
 #include <WiFi.h>
 
-#define PORT 5000
+#define PORT 80
 
 const char* ssid = "StormingKids";
 const char* pswd = "todbot1234";
@@ -64,10 +64,9 @@ void setup() {
 
   pinMode(ENA, INPUT_PULLUP);
   pinMode(ENB, INPUT_PULLUP);
+  pinMode(LED_BUILTIN, OUTPUT);
 
   /* Wifi stuff */
-  WiFi.mode(WIFI_STA);
-  WiFi.setHostname("PicoW2");
   Serial.printf("Connecting to '%s' with '%s'\n", ssid, pswd);
   WiFi.begin(ssid, pswd);
   while (WiFi.status() != WL_CONNECTED) {
@@ -75,6 +74,7 @@ void setup() {
     delay(1000);
   }
   Serial.printf("\nConnected to WiFi\n\nConnect to server at %s:%d\n", WiFi.localIP().toString().c_str(), PORT);
+  digitalWrite(LED_BUILTIN, HIGH);
 
   attachInterrupt(digitalPinToInterrupt(ENA), updPos, RISING);
 
@@ -100,18 +100,19 @@ void growth() {
 }
 
 void loop() {
-  /* Testing w/ wifi*/
-  while (!client) {
-    client = server.accept();
-  }
-  if (!client.available()) {
-    return;
-  }
-  char req = (char)client.read();
-  Serial.printf("Message received: ");
-  Serial.printf("%c\n", req);
-  if (req == 'G') {
-    growth();
+  /* Testing w/ wifi*/ 
+  client = server.accept();
+  if (client) {
+    while (client.connected()) {
+      char req = (char)client.read();
+      Serial.printf("Message received: ");
+      Serial.printf("%c\n", req);
+      if (req == 'G') {
+        growth();
+      }
+    }
+    client.stop();
+    Serial.println("Client disconnected");
   }
   /* Testing w/out wifi */
   // if ((int)round(millis()) % 2000 == 0) {
@@ -124,4 +125,6 @@ void loop() {
   //   Serial.read();
   // }
   // if (run) growth();
+  // growth();
+  // delay(5000);
 }
