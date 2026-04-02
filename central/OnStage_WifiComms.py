@@ -1,41 +1,41 @@
 import socket
 import time
 
-PICO_IP = "192.168.32.209"  # StormingKids IP
-PORT = 5000
+def wifi_connect(IP, port): 
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    err = s.connect_ex((IP, port))
+    if (err != 0):
+        print(f"Failed to connect to {IP} {port}")
+        return -1
+    print(f"Connected to {IP} {port}")
+    return s
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.connect((PICO_IP, PORT))
-print("Connected to Pico W")
-
-def wifi_write(message):
-    errorval = sock.send(message.encode())
-    if (errorval == 0):
+def wifi_write(s, message):
+    message = f"{message}"
+    err = s.send(message.encode())
+    if (err == 0):
         print("Failed to send message")
         return -1
     print("Sent:", message.strip())
     return
         
-def wifi_read():
-    reply = sock.recv(1024).decode().strip()
+def wifi_read(s):
+    reply = s.recv(1024).decode().strip()
     if reply:
-        print("Pico replied:", reply)
+        print("Replied:", reply)
         return reply
     return -1
 
+def wifi_disconnect(s):
+    s.close()
+
 if __name__ == "__main__":
-    try:
-        while True:
-            message = "Hello world\n"
-            wifi_write(message)
-            time.sleep(1)
-            reply = wifi_read()
-            print(reply)
-            
-            if 0xFF == ord('q'): 
-                break
-
-    except KeyboardInterrupt:
-        print("Closing connection.")
-
-    sock.close()          
+    s = wifi_connect("192.168.32.209", 80)
+    if (s == -1):
+        exit(1)
+    
+    while (wifi_write(s, "G") == -1):
+        time.sleep(10)
+        continue
+        
+    wifi_disconnect(s)
