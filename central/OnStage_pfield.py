@@ -82,7 +82,7 @@ def pfield_path(robot, obstacles, field_size):
     x = np.arange(-0,gridsize,1)
     y = np.arange(-0,gridsize,1)
 
-    goal = [robot.target.x, robot.target.y] #goal=robot.target
+    goal = [robot.target.coords.x, robot.target.coords.y] #goal=robot.target
     
     seek_points = np.array([[robot.coords.x, robot.coords.y]]) #start point
     X, Y = np.meshgrid(x,y) #grid x, y
