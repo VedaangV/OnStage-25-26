@@ -110,7 +110,7 @@ def initAnchors(cam, anchors):
                 break
             
     rgb = displayTags(results, rgb)
-    cv2.imshow("Camera", rgb)
+    cv2.imshow("Testing", rgb)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         return 1
     return 0
@@ -141,7 +141,7 @@ def updTagPos(cam, group, anchors, field_size, get_rotation = False):
                 break
             
     rgb = displayTags(results, rgb)
-    cv2.imshow("Camera", rgb)
+    cv2.imshow("Testing", rgb)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         return
     return
@@ -169,7 +169,7 @@ def updObsPos(cam, group, Lhsv, Uhsv, anchors, field_size):
     ctrs = np.zeros((h, w, 1), dtype=np.uint8)
     ctrs = np.zeros((h, w, 1), dtype=np.uint8)
     cv2.drawContours(ctrs, contours, -1, 255)
-    cv2.imshow("Camera", ctrs)
+    cv2.imshow("Testing", ctrs)
     
     ### get boundaries ###
     if (len(contours) == 0):
