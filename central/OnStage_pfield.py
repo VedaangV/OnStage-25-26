@@ -94,6 +94,8 @@ def pfield_path(robot, obstacles, field_size):
     delx, dely = add_goal(X, Y, s, r, delx, dely, goal, gridsize) #add goal to slope field
     plot_graph(X, Y, delx, dely , 'Goal', fig, ax, goal, r, 0, 'b')
     for idx, obs in enumerate(obstacles):
+      if obs.coords.x < 0 or obs.coords.x > field_size or obs.coords.y < 0 or obs.coords.y > field_size:
+          continue
       s = 5 #
       r = obs.radius
       loc = [obs.coords.x, obs.coords.y]
@@ -101,7 +103,6 @@ def pfield_path(robot, obstacles, field_size):
       plot_graph(X, Y, delx, dely, 'Obstacle', fig, ax, loc, r, idx+1,'m') #
     
     plot_graph(X, Y, delx, dely , '', fig, ax, seek_points[0], 1, 0, 'r')
-    
     stream = ax.streamplot(X,Y,delx,dely, start_points=seek_points,linewidth=4, cmap='autu')
     segments = stream.lines.get_segments()
     points = [[robot.coords.x, robot.coords.y]]
@@ -117,6 +118,9 @@ def pfield_path(robot, obstacles, field_size):
         point = [segments[start + idx][0][0], segments[start + idx][0][1]]
         points.append(point)
         
+    print(seekpoints) #testing#
+    print(points) #testing#
+    
     plt.show()
     plt.close()
     return points
