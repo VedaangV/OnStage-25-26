@@ -21,6 +21,8 @@ import apriltag
 
 os.environ["OPENCV_LOG_LEVEL"] = "OFF"
 
+AREA_THRESHOLD = 2
+
 ### objects ###
 class Point:
     def __init__(self, x, y):
@@ -108,19 +110,18 @@ def initAnchors(cam, anchors):
                 tags_detected = tags_detected + 1
                 anchors[i].coords = Point(r.center[0], r.center[1])
                 break
-            
+    
     rgb = displayTags(results, rgb)
-    cv2.imshow("Testing", rgb)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        return 1
-    return 0
+    if tags_detected == len(anchors):
+        return 1, rgb
+    return 0, rgb
     
 def updTagPos(cam, group, anchors, field_size, get_rotation = False):
     ### get image as RGB and GRAY ###
     ret, frame = cam.read()
     if not ret:
         print("Failed to get camera frame")
-        return
+        return -1, None
     rgb = frame
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
@@ -130,9 +131,11 @@ def updTagPos(cam, group, anchors, field_size, get_rotation = False):
     results = detector.detect(gray)
     
     ### update robot x and y values ###
+    tags_detected = 0
     for r in results:
         for i in range(len(group)):
             if (group[i].tag == r.tag_id):
+                tags_detected = tags_detected + 1
                 p = Point(r.center[0], r.center[1])
                 p = convertPos(p, anchors[0].coords, anchors[1].coords, anchors[2].coords, field_size)
                 group[i].coords = p
@@ -141,12 +144,11 @@ def updTagPos(cam, group, anchors, field_size, get_rotation = False):
                 break
             
     rgb = displayTags(results, rgb)
-    cv2.imshow("Testing", rgb)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        return
-    return
+    if tags_detected == len(group):
+        return 1, rgb
+    return 0, rgb
 
-def updObsPos(cam, group, Lhsv, Uhsv, anchors, field_size):
+def updObsPos(cam, obstacles, Lhsv, Uhsv, anchors, field_size):
     ### get image as RGB ###
     ret, frame = cam.read()
     if not ret:
@@ -169,29 +171,32 @@ def updObsPos(cam, group, Lhsv, Uhsv, anchors, field_size):
     ctrs = np.zeros((h, w, 1), dtype=np.uint8)
     ctrs = np.zeros((h, w, 1), dtype=np.uint8)
     cv2.drawContours(ctrs, contours, -1, 255)
-    cv2.imshow("Testing", ctrs)
     
     ### get boundaries ###
+    temp = []
+    for idx in range(len(contours)):
+        if cv2.contourArea(contours[idx]) >= AREA_THRESHOLD:
+            temp.append(contours[idx])
+    contours = temp
+    
+    obstacle_count = 0
     if (len(contours) == 0):
-        return -1
-    for idx, item in enumerate(group):
-        if (idx >= len(contours)):
-            item.coords = Point(0, 0)
-            item.outline = []
-            item.radius = 0
-        cnt = contours[idx]
-        
+        return 0, ctrs
+    for idx, cnt in enumerate(contours):
+        if len(obstacles) == obstacle_count:
+            break
         M = cv2.moments(cnt)
         if M["m00"] != 0:
             centroid = Point(int(M['m10']/M['m00']), int(M['m01']/M['m00']))
         else:
             centroid = Point(0, 0)
+            
         centroid = convertPos(centroid, anchors[0].coords, anchors[1].coords, anchors[2].coords, field_size)
-        item.coords = centroid
+        obstacles[obstacle_count].coords = centroid
         
         rect = cv2.minAreaRect(cnt)
         box = cv2.boxPoints(rect)
-        minDist = 80
+        minDist = field_size
         maxDist = 0
         for i in range(len(box)):
             point = Point(box[i][0], box[i][1])
@@ -202,10 +207,10 @@ def updObsPos(cam, group, Lhsv, Uhsv, anchors, field_size):
                 maxDist = point.distance_to(centroid)
         if (minDist == 80 or maxDist == 0):
             return -1
-        item.radius = (minDist + maxDist) / 2
-        print(str(idx) + ": " + str(item.radius)) #testing#
-    print("\n") #testing#
-        
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        return 1
-    return 0
+        obstacles[obstacle_count].radius = (minDist + maxDist) / 2
+        print(str(obstacle_count) + ": " + str(item.radius)) #testing#
+        obstacle_count = obstacle_count + 1
+    
+    if obstacle_count == len(obstacles):
+        return 1, ctrs
+    return 0, ctrs
