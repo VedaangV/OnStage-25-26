@@ -12,6 +12,7 @@ const char* password = "todbot1234";
 float vx = 0.0;
 float vy = 0.0;
 
+#define LED 21
 String inputBuffer = "";
 void setup() {
   Serial.begin(115200);
@@ -29,20 +30,32 @@ void setup() {
   pinMode(Motor3.fpin, OUTPUT);
   pinMode(Motor3.rpin, OUTPUT);
   pinMode(Motor3.control, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(500);
+  pinMode(encoderPinA, INPUT_PULLUP);
+  pinMode(encoderPinB, INPUT_PULLUP);
+  // Attach interrupt to pin 2, rising edge
+  attachInterrupt(digitalPinToInterrupt(encoderPinA), handleEncoder, RISING);
 
-  delay(5000);
-    WiFi.begin(ssid, password);
-  
+   WiFi.begin(ssid, password);
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
   Serial.println("WiFi connected");
   server.begin();
-  
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(500);
+
+
+
+
 }
 
 void loop() {
+
   WiFiClient client = server.available(); // Check for a new client connection
   Serial.println(WiFi.localIP());
   if (client) {
@@ -55,7 +68,7 @@ void loop() {
           Serial.print(vx);
           Serial.println(vy);
           inputBuffer = "";
-          vmotor(vx, vy, 0);  
+          vmotor(vx, vy, 0); 
         } 
         else {
           inputBuffer += c;
@@ -63,8 +76,8 @@ void loop() {
       }
     }
     Serial.println("Client Disconnected.");
+    client.stop();
   }
-  
 }
 
 void parseVelocity(String data) {
@@ -72,7 +85,7 @@ void parseVelocity(String data) {
   if (comma == -1) return;
 
   String vxStr = data.substring(data.indexOf("x:") + 3, comma);
-  String vyStr = data.substring(data.indexOf("x:") + 3, data.length());
+  String vyStr = data.substring(data.indexOf("y:") + 3, data.length());
 
   vxStr.trim();
   vyStr.trim();
