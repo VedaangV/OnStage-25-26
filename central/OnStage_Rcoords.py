@@ -205,10 +205,18 @@ def updObsPos(cam, obstacles, Lhsv, Uhsv, anchors, field_size):
                 minDist = point.distance_to(centroid)
             if (point.distance_to(centroid) > maxDist):
                 maxDist = point.distance_to(centroid)
+            obstacles[obstacle_count].path.append([point.x, point.y])
         if (minDist == 80 or maxDist == 0):
             return -1
         obstacles[obstacle_count].radius = (minDist + maxDist) / 2
-        print(str(obstacle_count) + ": " + str(item.radius)) #testing#
+        
+        num_segments = len(obstacles[obstacle_count].path)
+        for i in range(num_segments):
+            addpts = np.linspace([int(obstacles[obstacle_count].path[i][0]), int(obstacles[obstacle_count].path[i][1])], [int(obstacles[obstacle_count].path[i+1][0]), int(obstacles[obstacle_count].path[i+1][1])], int(obstacles[obstacle_count].radius)*2)
+            addpts = addpts.tolist()
+            obstacles[obstacle_count].path.extend(addpts) 
+        
+        print(str(obstacle_count) + ": " + str(obstacles[obstacle_count].radius)) #testing#
         obstacle_count = obstacle_count + 1
     
     if obstacle_count == len(obstacles):
