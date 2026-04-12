@@ -1,6 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import time
+
+PLOT_TYPE = "RADIUS_PLOT" #"BOUNDARY_PLOT"
 
 ### add goal object to field ###
 def add_goal (X, Y, s, r, delx, dely, loc, gridsize):
@@ -65,16 +68,12 @@ def add_obstacle(X, Y, s, r, delx, dely, loc, goal, gridsize):
    
   return delx, dely, obstacle, r
 
-### plot axis elements ###
-def plot_graph(X, Y, delx, dely, obj, fig, ax, loc,r,i, color,start_goal=np.array([[0,0]]) ):
-  ax.quiver(X, Y, delx, dely)
-  ax.add_patch(plt.Circle(loc, r, color=color))
-  ax.set_title(f'Robot path with {i} obstacles ')
-  ax.annotate(obj, xy=loc, fontsize=10, ha="center")
-  return ax
-
 ### find path based on potential field ###
 def pfield_path(robot, obstacles, field_size):
+    mpl.rcParams['path.simplify'] = True
+    mpl.rcParams['path.simplify_threshold'] = 1.0
+    mpl.rcParams['agg.path.chunksize'] = 10000
+
     gridsize = field_size
     fig, ax = plt.subplots(figsize = (gridsize,gridsize))
     
@@ -89,21 +88,35 @@ def pfield_path(robot, obstacles, field_size):
     delx = np.zeros_like(X) #slope field x
     dely = np.zeros_like(Y) #slope field y 
     
-    s = 5 #pull/push strength, tune value
+    if PLOT_TYPE == "RADIUS_PLOT":
+        s = 2 #pull/push strength, tune value
+    if PLOT_TYPE == "BOUNDARY_PLOT":
+        s = 6
     r = 1.5 #radius/size, tune value
     delx, dely = add_goal(X, Y, s, r, delx, dely, goal, gridsize) #add goal to slope field
-    plot_graph(X, Y, delx, dely , 'Goal', fig, ax, goal, r, 0, 'b')
+    ax.add_patch(plt.Circle(goal, r, color='b'))
     for idx, obs in enumerate(obstacles):
-      if obs.coords.x < 0 or obs.coords.x > field_size or obs.coords.y < 0 or obs.coords.y > field_size:
-          continue
-      s = 5 #
-      r = obs.radius
-      loc = [obs.coords.x, obs.coords.y]
-      delx, dely, loc, r = add_obstacle(X, Y, s, r, delx, dely, loc, goal, gridsize)
-      plot_graph(X, Y, delx, dely, 'Obstacle', fig, ax, loc, r, idx+1,'m') #
+      if PLOT_TYPE == "RADIUS_PLOT":
+          if obs.coords.x < 0 or obs.coords.x > field_size or obs.coords.y < 0 or obs.coords.y > field_size:
+              continue
+          s = 6
+          r = obs.radius
+          loc = [obs.coords.x, obs.coords.y]
+          delx, dely, loc, r = add_obstacle(X, Y, s, r, delx, dely, loc, goal, gridsize)
+          ax.add_patch(plt.Circle(loc, r, color='m')) #
+      if PLOT_TYPE == "BOUNDARY_PLOT":
+        for pt in obs.path:
+          if pt[0] < 0 or pt[0] > field_size or pt[1] < 0 or pt[1] > field_size:
+            continue
+          s = 6
+          r = 0.5
+          loc = pt
+          delx, dely, loc, r = add_obstacle(X, Y, s, r, delx, dely, loc, goal, gridsize)
+          ax.add_patch(plt.Circle(loc, r, color='m')) #
     
-    plot_graph(X, Y, delx, dely , '', fig, ax, seek_points[0], 1, 0, 'r')
-    stream = ax.streamplot(X,Y,delx,dely, start_points=seek_points,linewidth=4, cmap='autu')
+    ax.add_patch(plt.Circle(seek_points[0], 1, color='r'))
+    ax.quiver(X, Y, delx, dely)
+    stream = ax.streamplot(X,Y,delx,dely, density=0.5, start_points=seek_points,linewidth=4, cmap='autu')
     segments = stream.lines.get_segments()
     points = [[robot.coords.x, robot.coords.y]]
     
@@ -118,8 +131,8 @@ def pfield_path(robot, obstacles, field_size):
         point = [segments[start + idx][0][0], segments[start + idx][0][1]]
         points.append(point)
         
-    print(seekpoints) #testing#
-    print(points) #testing#
+#     print(seek_points) #testing#
+#     print(points) #testing#
     
     plt.show()
     plt.close()
