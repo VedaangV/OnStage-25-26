@@ -12,7 +12,7 @@ from OnStage_WifiComms import wifi_connect, wifi_write, wifi_read, wifi_disconne
 from OnStage_pfield import pfield_path
 
 MAX_PLANT_GROWTH = 4
-ENABLE_WIFI = False
+ENABLE_WIFI = True
 
 states = ["None", "Waiting", "Ice", "Plant"]
 
@@ -60,6 +60,7 @@ class obstacle:
     def __init__(self):
         self.coords = Point(-1, -1)
         self.radius = 0
+        self.path = []
 class plant:
     def __init__(self, IP, port, tag):
         self.IP = IP
@@ -94,12 +95,12 @@ class ice:
 robots = [robot("192.168.32.152", 5000, 0)]   #AT tag 5
 anchors = [anchor(5), anchor(1), anchor(2)]  #AT tag 0-2
 
-obstacles = []#[obstacle(), obstacle(), obstacle()] 
+obstacles = [obstacle(), obstacle(), obstacle()] #[]
 plants = [plant("192.168.32.209", 80, 4)]#[plant(WIFI_IP, 80, 4)]  #AT tag 4
 icepatches = [ice(3, 1)]  #AT tag 3
 
-obstacle_Lhsv = [0, 30, 200]
-obstacle_Uhsv = [20, 90, 255]
+obstacle_Lhsv = [0, 205, 170]
+obstacle_Uhsv = [10, 255, 255]
 
 field_width = 80  #scales x dimension of relative coordinates
 field_length = 80  #scales y dimension of relative coordinates
@@ -154,12 +155,12 @@ def followPath(robot):
     Vx = V * dx / d
     Vy = V * dy / d
     if ENABLE_WIFI == True:
-        wifi_write(robots[0].sock, f"vx: {Vx:.0f}, vy: {Vy:.0f}\n")
+        wifi_write(robot.sock, f"vx: {Vx:.0f}, vy: {Vy:.0f}\n")
     return False
 
 def stopRobot(robot):
     if ENABLE_WIFI == True:
-        wifi_write(robots[0].sock, "vx: 0, vy: 0\n")
+        wifi_write(robot.sock, "vx: 0, vy: 0\n")
     
 def assignTargets(robots, icepatches, plants): # system = plants or ice
     ### assign targets using matrix calculations ###
@@ -230,6 +231,17 @@ def assignTargets(robots, icepatches, plants): # system = plants or ice
     
 ### main ###
 if __name__ == "__main__":
+    ### position camera ###
+    while True:
+        ret, frame = cam.read()
+        if not ret:
+            print("Failed to get camera frame")
+            continue
+        cv2.imshow("Setup", frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    cv2.destroyAllWindows()
+    
     ### initialize tags/positions ###
     # anchors
     while (res := initAnchors(cam, anchors))[0] != 1:
@@ -275,11 +287,12 @@ if __name__ == "__main__":
                 plant.sock = wifi_connect(plant.IP, plant.port)
     
     # obstacles
-#     while (res := updObsPos(cam, obstacles, obstacle_Lhsv, obstacle_Uhsv, anchors, field_width))[0] != 1:
-#         img = res[1]
-#         cv2.imshow("Testing", img)
-#         if cv2.waitKey(1) & 0xFF == ord('q'):
-#             break
+    while (res := updObsPos(cam, obstacles, obstacle_Lhsv, obstacle_Uhsv, anchors, field_width))[0] != 1:
+        img = res[1]
+        cv2.imshow("Testing", img)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+        continue
     
     input("Press Enter to start")
     
@@ -287,7 +300,7 @@ if __name__ == "__main__":
     assignTargets(robots, icepatches, plants)
     for robot in robots:
         if (robot.state != "None" and robot.state != "Waiting"):
-            robot.path = pfield_path(robots[0], obstacles, field_width)
+            robot.path = pfield_path(robot, obstacles, field_width)
             followPath(robot)
         else:
             continue
@@ -318,7 +331,7 @@ if __name__ == "__main__":
             else:
                 continue
         
-        if (err == 1):
+        if (err != -1):
             img = displayElements(img, anchors, robots, field_width)
             cv2.imshow("Testing", img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
