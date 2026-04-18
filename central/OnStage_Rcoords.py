@@ -19,6 +19,9 @@ module_dir = os.path.abspath('/home/pi/onstage/python/apriltag/lib/python3.11/si
 sys.path.append(module_dir)
 import apriltag
 
+options = apriltag.DetectorOptions(families="tag36h11") #setup AT
+detector = apriltag.Detector(options)
+
 os.environ["OPENCV_LOG_LEVEL"] = "OFF"
 
 AREA_THRESHOLD = 2
@@ -98,8 +101,6 @@ def initAnchors(cam, anchors):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
     ### get AT detection results ###
-    options = apriltag.DetectorOptions(families="tag36h11") #setup AT
-    detector = apriltag.Detector(options) #setup AT
     results = detector.detect(gray)
 
     ### update robot x and y values ###
@@ -126,8 +127,6 @@ def updTagPos(cam, group, anchors, field_size, get_rotation = False):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
     ### get AT detection results ###
-    options = apriltag.DetectorOptions(families="tag36h11") #setup AT
-    detector = apriltag.Detector(options) #setup AT
     results = detector.detect(gray)
     
     ### update robot x and y values ###
@@ -212,7 +211,7 @@ def updObsPos(cam, obstacles, Lhsv, Uhsv, anchors, field_size):
         
         num_segments = len(obstacles[obstacle_count].path)
         for i in range(num_segments):
-            addpts = np.linspace([int(obstacles[obstacle_count].path[i][0]), int(obstacles[obstacle_count].path[i][1])], [int(obstacles[obstacle_count].path[i+1][0]), int(obstacles[obstacle_count].path[i+1][1])], int(obstacles[obstacle_count].radius)*2)
+            addpts = np.linspace([int(obstacles[obstacle_count].path[i][0]), int(obstacles[obstacle_count].path[i][1])], [int(obstacles[obstacle_count].path[i+1][0]), int(obstacles[obstacle_count].path[i+1][1])], int(obstacles[obstacle_count].radius * 1))
             addpts = addpts.tolist()
             obstacles[obstacle_count].path.extend(addpts) 
         
