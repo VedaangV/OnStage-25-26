@@ -1,6 +1,7 @@
 ### import libraries ###
 import numpy as np
 import math
+import threading
 import socket
 import time
 import cv2
@@ -12,11 +13,11 @@ from OnStage_WifiComms import wifi_connect, wifi_write, wifi_read, wifi_disconne
 from OnStage_pfield import pfield_path
 
 MAX_PLANT_GROWTH = 4
-ENABLE_WIFI = True
+ENABLE_WIFI = False
 
 states = ["None", "Waiting", "Ice", "Plant"]
 
-DIST_THRESHOLD = 3
+DIST_THRESHOLD = 2
 
 ### objects ###
 class Point:
@@ -92,33 +93,70 @@ class ice:
 #         self.level = self.level - 1
 #         return True
 
-robots = [robot("192.168.32.152", 5000, 0)]   #AT tag 5
-anchors = [anchor(5), anchor(1), anchor(2)]  #AT tag 0-2
+robots = [robot("192.168.32.152", 5000, 6), robot("192.168.32.152", 5000, 7)]   #AT tag 5
+anchors = [anchor(0), anchor(1), anchor(2)]  #AT tag 0-2
 
 obstacles = [obstacle(), obstacle(), obstacle()] #[]
-plants = [plant("192.168.32.209", 80, 4)]#[plant(WIFI_IP, 80, 4)]  #AT tag 4
-icepatches = [ice(3, 1)]  #AT tag 3
+plants = [plant("192.168.32.209", 80, 4)]#[plant("192.168.32.209", 80, 4)]#[plant(WIFI_IP, 80, 4)]  #AT tag 4
+icepatches = [ice(3, 1), ice(5, 1)]  #AT tag 3
 
-obstacle_Lhsv = [0, 205, 170]
-obstacle_Uhsv = [10, 255, 255]
+obstacle_Lhsv = [160, 225, 130]
+obstacle_Uhsv = [180, 255, 240]
 
 field_width = 80  #scales x dimension of relative coordinates
 field_length = 80  #scales y dimension of relative coordinates
 baseV = 100 #base velocity of robot, m/s
 
 ### setup camera ###
-camera_port = 0
-camera_width = 640; camera_height = 480
-camera_fps = 30;
+class VideoStream:
+    def __init__(self):
+        gst_pipeline = (
+            "souphttpsrc location=http://192.168.32.214:8080/video is-live=true ! "
+            "multipartdemux ! jpegdec ! videoconvert ! "
+            "video/x-raw,format=BGR ! appsink drop=true max-buffers=1 sync=false"
+        )
+        self.cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+        if not self.cap.isOpened():
+            print("Failed to open camera")
+            exit()
 
-cam = cv2.VideoCapture(camera_port)
-cam.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
-cam.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
-cam.set(cv2.CAP_PROP_FPS, camera_fps)
-cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-if not cam.isOpened():
-    print("Failed to open camera")
-    exit()
+        self.ret, self.frame = self.cap.read()
+        self.lock = threading.Lock()
+        self.running = True
+
+        threading.Thread(target=self.update, daemon=True).start()
+
+    def update(self):
+        while self.running:
+            ret, frame = self.cap.read()
+            if ret:
+                with self.lock:
+                    self.ret = ret
+                    self.frame = frame
+
+    def read(self):
+        with self.lock:
+            return self.ret, self.frame
+
+    def stop(self):
+        self.running = False
+        self.cap.release()
+        
+cam = VideoStream()
+        
+# camera_port = 0
+# camera_width = 640; camera_height = 480
+# camera_fps = 30;
+# 
+# cam = cv2.VideoCapture(camera_port)
+# cam.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
+# cam.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
+# cam.set(cv2.CAP_PROP_FPS, camera_fps)
+# cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+
+# if not cam.isOpened():
+#     print("Failed to open camera")
+#     exit()
     
 def displayElements(img, anchors, robots, field_size):
     for robot in robots:
@@ -142,15 +180,15 @@ def followPath(robot):
     if not robot.path:
         robot.path.append([robot.target.coords.x, robot.target.coords.y])
         
-    print("Robot coords: " + f"{robot.coords.x:.2f}" + ", " + f"{robot.coords.y:.2f}") #testing#
-    print("Next point coords: " + f"{robot.path[0][0]:.2f}" + ", " + f"{robot.path[0][1]:.2f}") #testing#
-    print("Target coords: " + f"{robot.target.coords.x:.2f}" + ", " + f"{robot.target.coords.y:.2f}") #testing#
+#     print("Robot coords: " + f"{robot.coords.x:.2f}" + ", " + f"{robot.coords.y:.2f}") #testing#
+#     print("Next point coords: " + f"{robot.path[0][0]:.2f}" + ", " + f"{robot.path[0][1]:.2f}") #testing#
+#     print("Target coords: " + f"{robot.target.coords.x:.2f}" + ", " + f"{robot.target.coords.y:.2f}") #testing#
     dx = robot.path[0][0] - robot.coords.x
     dy = robot.path[0][1] - robot.coords.y
     d = math.sqrt(dx**2 + dy**2)
-    print("dx: " + f"{dx:.2f}" + ", " + "dy: " + f"{dy:.2f}") #testing#
-    print("dist: " + f"{robot.coords.distance_to(Point(robot.path[0][0], robot.path[0][1])):.2f}") #testing#
-    print('\n\n') #testing#
+#     print("dx: " + f"{dx:.2f}" + ", " + "dy: " + f"{dy:.2f}") #testing#
+#     print("dist: " + f"{robot.coords.distance_to(Point(robot.path[0][0], robot.path[0][1])):.2f}") #testing#
+#     print('\n\n') #testing#
     V = baseV
     Vx = V * dx / d
     Vy = V * dy / d
