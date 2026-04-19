@@ -365,7 +365,7 @@ if __name__ == "__main__":
                 robot.target = None
                 assignTargets(robots, icepatches, plants)
                 if (robot.state != "None" and robot.state != "Waiting"):
-                    robot.path = pfield_path(robots[0], obstacles, field_width)
+                    robot.path = pfield_path(robot, obstacles, field_width)
             else:
                 continue
         
