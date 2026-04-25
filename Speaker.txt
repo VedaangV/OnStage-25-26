@@ -10,20 +10,30 @@ run:
 sudo apt-get update
 sudo apt-get install pulseaudio-module-bluetooth
 
-CODE FOR AUDIO MODULES:
+CODE FOR AUDIO:
 
 import pygame
 
 pygame.mixer.init()
 pygame.mixer.set_num_channels(4)
-MINING_CHANNEL = pygame.mixer.Channel(0)
-MINING_AUDIO = pygame.mixer.Sound("ICE.mp3")
+
+channels = {
+  "short_sfx": pygame.mixer.Channel(0)
+  "bg_sfx": pygame.mixer.Channel(1)
+  "commentary_sfx": pygame.mixer.Channel(2)
+}
+
+audios = {
+  "mining": pygame.mixer.Sound("MINING.mp3")
+}
 
 # play audio for ice
-def play_sound_ice(id): # id of robot initiating the sound
-  audio = pygame.mixer.Sound("ICE.mp3")
-  MINING_CHANNEL.stop()
-  MINING_CHANNEL.play(audio)
+def play_sound(channel, name):
+  channels[channel].play(audios[name])
+
+# example: for mining to get to ice
+
+play_sound("short_sfx", "mining")
 
 
   
