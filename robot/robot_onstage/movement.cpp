@@ -1,5 +1,8 @@
 //include files
 #include "movement.h"
+#include <cmath>
+#include <numbers>
+using namespace std;
 
 //set motor pins
 Motor Motor2{8, 9, A0}, Motor3{10, 11, A1}, Motor1{12, 13, A2};
@@ -33,23 +36,37 @@ void Motor::speed(int val) {
 
 //function: set motor speeds
 void motor(int speed1, int speed2, int speed3) {
-  float fmults[] = {1.4, 1.2, 1};
-  float bmults[] = {1.5, 1.5, 1};
+  // float fmults[] = {1.4, 1.2, 1};
+  // float bmults[] = {1.5, 1.5, 1};
   
-  Motor1.speed(speed1*((speed1>0) ? fmults[0] : bmults[0]));
-  Motor2.speed(speed2*((speed2>0) ? fmults[1] : bmults[1]));
-  Motor3.speed(speed3*((speed3>0) ? fmults[2] : bmults[2]));
+  // Motor1.speed(speed1*((speed1>0) ? fmults[0] : bmults[0]));
+  // Motor2.speed(speed2*((speed2>0) ? fmults[1] : bmults[1]));
+  // Motor3.speed(speed3*((speed3>0) ? fmults[2] : bmults[2]));
+
+  Motor1.speed(speed1);
+  Motor2.speed(speed2);
+  Motor3.speed(speed3);
+}
+
+float degtorad(int degrees) {
+  if (degrees >= 360) {
+    degrees = degrees - 360;
+  }
+  if (degrees < 0) {
+    degrees = degrees + 360;
+  }
+  float radians = degrees * PI / 180;
+  return radians;
 }
 
 //function: set motor speeds based on velocity
-const int basespeed = 30;
-const float radius = 0.058; //meters
-const float msToSpeed = 517.24137931;
-void vmotor(float Vx, float Vy, float rotation) {
+const float radius = 0.346; //ft
+const float ftsToSpeed = 157.65;
+void vmotor(float Vx, float Vy, float current_rot) {
   
-  int s1 = (((-1/2.0)*Vx) - (sqrt(3.0)/2.0*Vy) + (radius * rotation)); //right motor
-  int s2 = (((-1/2.0)*Vx) + (sqrt(3.0)/2.0*Vy) + (radius * rotation)); //left motor
-  int s3 = (Vx + (radius * rotation)); //back motor
+  int s1 = ftsToSpeed * (-Vx*sin(degtorad(current_rot + 60)) + Vy*sin(degtorad(current_rot + 60)) - (radius * current_rot)); //right motor
+  int s2 = ftsToSpeed * (-Vx*sin(degtorad(current_rot - 60)) + Vy*sin(degtorad(current_rot - 60)) - (radius * current_rot)); //left motor
+  int s3 = ftsToSpeed * (-Vx*sin(degtorad(current_rot + 180)) + Vy*sin(degtorad(current_rot + 180)) - (radius * current_rot)); //back motor
 
   motor(s1, s2, s3);
 }
