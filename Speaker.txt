@@ -15,8 +15,9 @@ CODE FOR AUDIO MODULES:
 import pygame
 
 pygame.mixer.init()
-
+pygame.mixer.set_num_channels(4)
 MINING_CHANNEL = pygame.mixer.Channel(0)
+MINING_AUDIO = pygame.mixer.Sound("ICE.mp3")
 
 # play audio for ice
 def play_sound_ice(id): # id of robot initiating the sound
