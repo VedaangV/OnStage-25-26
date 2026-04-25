@@ -10,14 +10,15 @@ from munkres import Munkres, print_matrix
 ### import subfiles ###
 from OnStage_Rcoords import updTagPos, updObsPos, initAnchors
 from OnStage_WifiComms import wifi_connect, wifi_write, wifi_read, wifi_disconnect
-from OnStage_pfield import pfield_path
+from OnStage_pfield import pfield_path ###
+from OnStage_CBF import CBFController, cbf_follow_path, cbf_stop_robot ###
 
 MAX_PLANT_GROWTH = 4
-ENABLE_WIFI = False
+ENABLE_WIFI = True
 
 states = ["None", "Waiting", "Ice", "Plant"]
 
-DIST_THRESHOLD = 2
+# DIST_THRESHOLD = 2
 
 ### objects ###
 class Point:
@@ -32,18 +33,22 @@ class Point:
 
     def __str__(self):
         return f"Point({self.x}, {self.y})"
-    
+
 class robot:
+    tag: int
+    IP: str
+    port: int
+    sock = None
+    coords: Point = Point(-1, -1)
+    target: None
+    path: None
+    rotation: int = 0
+    state: str = "None"
+    haswater: bool = False
+    
     def __init__(self, IP, port, tag):
         self.IP = IP;
         self.port = port
-        self.sock = None
-        self.coords = Point(-1, -1)
-        self.path = None
-        self.target = None
-        self.rotation = 0
-        self.haswater = False
-        self.state = "None"
         self.tag = tag;
     def setTarget(self, target):
         self.target = target
@@ -53,65 +58,77 @@ class robot:
         return (self.coords.distance_to(self.target) < DIST_THRESHOLD) #!tentative
 
 class anchor:
+    tag: int
+    coords: Point = Point(-1, -1)
+    
     def __init__(self, tag):
-        self.coords = Point(-1, -1)
         self.tag = tag
 
 class obstacle:
-    def __init__(self):
-        self.coords = Point(-1, -1)
-        self.radius = 0
-        self.path = []
+    coords: Point = Point(-1, -1)
+    radius: int = 0
+    border = []
+
 class plant:
+    tag: int
+    IP: str
+    port: int
+    sock = None
+    coords: Point = Point(-1, -1)
+    level: int = 0
+    available: bool = True
+    
     def __init__(self, IP, port, tag):
         self.IP = IP
         self.port = port
-        self.sock = None
-        self.coords = Point(-1, -1)
         self.tag = tag
-        self.available = True
-        self.level = 0
     def grow(self):
         if (self.level < MAX_PLANT_GROWTH):
             self.level = self.level + 1
-            if ENABLE_WIFI == True:
-                wifi_write(self.sock, "G")
-        
+#             if ENABLE_WIFI == True:
+#                 wifi_write(self.sock, "G")
+
 class ice:
+    tag: int
+    IP: str
+    port: int
+    sock: None
+    coords: Point = Point(-1, -1)
+    level: int
+    available: bool = True
+    
     def __init__(self, tag, level):
-        self.coords = Point(-1, -1)
         self.tag = tag
-        self.available = True
         self.level = level
     def deplete(self):
         if (self.level > 0):
             self.level = self.level - 1
 
-#     def withdraw(self):
-#         if (self.level <= 0):
-#             return False
-#         self.level = self.level - 1
-#         return True
+robots = [robot("192.168.32.152", 5000, 0)]   #AT tag 5
+anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
 
-robots = [robot("192.168.32.152", 5000, 6), robot("192.168.32.152", 5000, 7)]   #AT tag 5
-anchors = [anchor(0), anchor(1), anchor(2)]  #AT tag 0-2
-
-obstacles = [obstacle(), obstacle(), obstacle()] #[]
+obstacles = []#[obstacle(), obstacle(), obstacle()] #[]
 plants = [plant("192.168.32.209", 80, 4)]#[plant("192.168.32.209", 80, 4)]#[plant(WIFI_IP, 80, 4)]  #AT tag 4
-icepatches = [ice(3, 1), ice(5, 1)]  #AT tag 3
+icepatches = [ice(5, 1)]  #AT tag 3
 
 obstacle_Lhsv = [160, 225, 130]
 obstacle_Uhsv = [180, 255, 240]
 
-field_width = 80  #scales x dimension of relative coordinates
-field_length = 80  #scales y dimension of relative coordinates
-baseV = 100 #base velocity of robot, m/s
+field_width = 80  #ft  #scales x dimension of relative coordinates
+field_length = 80  #ft  #scales y dimension of relative coordinates
+# baseV = 100 #base velocity of robot, m/s
+
+### CBF controller ###
+# gamma        : CBF aggressiveness — raise if robots get too close to obstacles/each other
+# k_att        : waypoint attraction strength
+# safety_margin: extra clearance in field units (on top of robot + obstacle radii)
+cbf = CBFController(gamma=1.5, k_att=1.2, safety_margin=2.0)
 
 ### setup camera ###
 class VideoStream:
     def __init__(self):
         gst_pipeline = (
-            "souphttpsrc location=http://192.168.32.214:8080/video is-live=true ! "
+            "souphttpsrc location=http://192.168.32.215:8080/video is-live=true ! "
             "multipartdemux ! jpegdec ! videoconvert ! "
             "video/x-raw,format=BGR ! appsink drop=true max-buffers=1 sync=false"
         )
@@ -167,38 +184,38 @@ def displayElements(img, anchors, robots, field_size):
             cv2.circle(img, (int(robot.target.coords.x / field_size * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.target.coords.y / field_size * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 5, (0, 255, 0), -1)
     return img
 
-def followPath(robot):
-    if (robot.coords.distance_to(robot.target.coords) < DIST_THRESHOLD):
-        return True
-    if (len(robot.path) > 0 and robot.coords.distance_to(Point(robot.path[0][0], robot.path[0][1])) < DIST_THRESHOLD):
-        robot.path.pop(0)
-    for i in range(len(robot.path)):
-        if (robot.coords.distance_to(Point(robot.path[0][0], robot.path[0][1])) > robot.coords.distance_to(Point(robot.path[i][0], robot.path[i][1]))):
-            for j in range(i):
-                robot.path.pop(0)
-            break
-    if not robot.path:
-        robot.path.append([robot.target.coords.x, robot.target.coords.y])
-        
-#     print("Robot coords: " + f"{robot.coords.x:.2f}" + ", " + f"{robot.coords.y:.2f}") #testing#
-#     print("Next point coords: " + f"{robot.path[0][0]:.2f}" + ", " + f"{robot.path[0][1]:.2f}") #testing#
-#     print("Target coords: " + f"{robot.target.coords.x:.2f}" + ", " + f"{robot.target.coords.y:.2f}") #testing#
-    dx = robot.path[0][0] - robot.coords.x
-    dy = robot.path[0][1] - robot.coords.y
-    d = math.sqrt(dx**2 + dy**2)
-#     print("dx: " + f"{dx:.2f}" + ", " + "dy: " + f"{dy:.2f}") #testing#
-#     print("dist: " + f"{robot.coords.distance_to(Point(robot.path[0][0], robot.path[0][1])):.2f}") #testing#
-#     print('\n\n') #testing#
-    V = baseV
-    Vx = V * dx / d
-    Vy = V * dy / d
-    if ENABLE_WIFI == True:
-        wifi_write(robot.sock, f"vx: {Vx:.0f}, vy: {Vy:.0f}\n")
-    return False
-
-def stopRobot(robot):
-    if ENABLE_WIFI == True:
-        wifi_write(robot.sock, "vx: 0, vy: 0\n")
+# def followPath(robot):
+#     if (robot.coords.distance_to(robot.target.coords) < DIST_THRESHOLD):
+#         return True
+#     if (len(robot.path) > 0 and robot.coords.distance_to(Point(robot.path[0][0], robot.path[0][1])) < DIST_THRESHOLD):
+#         robot.path.pop(0)
+#     for i in range(len(robot.path)):
+#         if (robot.coords.distance_to(Point(robot.path[0][0], robot.path[0][1])) > robot.coords.distance_to(Point(robot.path[i][0], robot.path[i][1]))):
+#             for j in range(i):
+#                 robot.path.pop(0)
+#             break
+#     if not robot.path:
+#         robot.path.append([robot.target.coords.x, robot.target.coords.y])
+#         
+# #     print("Robot coords: " + f"{robot.coords.x:.2f}" + ", " + f"{robot.coords.y:.2f}") #testing#
+# #     print("Next point coords: " + f"{robot.path[0][0]:.2f}" + ", " + f"{robot.path[0][1]:.2f}") #testing#
+# #     print("Target coords: " + f"{robot.target.coords.x:.2f}" + ", " + f"{robot.target.coords.y:.2f}") #testing#
+#     dx = robot.path[0][0] - robot.coords.x
+#     dy = robot.path[0][1] - robot.coords.y
+#     d = math.sqrt(dx**2 + dy**2)
+# #     print("dx: " + f"{dx:.2f}" + ", " + "dy: " + f"{dy:.2f}") #testing#
+# #     print("dist: " + f"{robot.coords.distance_to(Point(robot.path[0][0], robot.path[0][1])):.2f}") #testing#
+# #     print('\n\n') #testing#
+#     V = baseV
+#     Vx = V * dx / d
+#     Vy = V * dy / d
+#     if ENABLE_WIFI == True:
+#         wifi_write(robot.sock, f"vx: {Vx:.0f}, vy: {Vy:.0f}\n")
+#     return False
+# 
+# def stopRobot(robot):
+#     if ENABLE_WIFI == True:
+#         wifi_write(robot.sock, "vx: 0, vy: 0\n")
     
 def assignTargets(robots, icepatches, plants): # system = plants or ice
     ### assign targets using matrix calculations ###
@@ -320,9 +337,9 @@ if __name__ == "__main__":
         for robot in robots:
             while (robot.sock == None or robot.sock == -1):
                 robot.sock = wifi_connect(robot.IP, robot.port)
-        for plant in plants:
-            while (plant.sock == None or plant.sock == -1):
-                plant.sock = wifi_connect(plant.IP, plant.port)
+#         for plant in plants:
+#             while (plant.sock == None or plant.sock == -1):
+#                 plant.sock = wifi_connect(plant.IP, plant.port)
     
     # obstacles
     while (res := updObsPos(cam, obstacles, obstacle_Lhsv, obstacle_Uhsv, anchors, field_width))[0] != 1:
@@ -338,8 +355,7 @@ if __name__ == "__main__":
     assignTargets(robots, icepatches, plants)
     for robot in robots:
         if (robot.state != "None" and robot.state != "Waiting"):
-            robot.path = pfield_path(robot, obstacles, field_width)
-            followPath(robot)
+            cbf_follow_path(cbf, robot, robots, obstacles)
         else:
             continue
     
@@ -348,9 +364,9 @@ if __name__ == "__main__":
         err, img = updTagPos(cam, robots, anchors, field_width, True)
         for robot in robots:
             if robot.state == "None" or robot.state == "Waiting":
-                stopRobot(robot)
-            elif (followPath(robot) == True):
-                stopRobot(robot)
+                cbf_stop_robot(robot)
+            elif (cbf_follow_path(cbf, robot, robots, obstacles) == True):
+                cbf_stop_robot(robot)
                 if (robot.state == "Ice"):
                     robot.target.deplete()
                     if robot.target.level == 0:
@@ -365,7 +381,7 @@ if __name__ == "__main__":
                 robot.target = None
                 assignTargets(robots, icepatches, plants)
                 if (robot.state != "None" and robot.state != "Waiting"):
-                    robot.path = pfield_path(robot, obstacles, field_width)
+                    cbf_follow_path(cbf, robot, robots, obstacles)
             else:
                 continue
         
