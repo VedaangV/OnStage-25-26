@@ -86,7 +86,7 @@ def pfield_path(robot, obstacles, field_size):
           delx, dely, loc, r = add_obstacle(X, Y, s, r, delx, dely, loc, goal, gridsize)
           ax.add_patch(plt.Circle(loc, r, color='m')) #
       if PLOT_TYPE == "BOUNDARY_PLOT":
-        for i, pt in enumerate(obs.path):
+        for i, pt in enumerate(obs.border):
           if pt[0] < 0 or pt[0] > field_size or pt[1] < 0 or pt[1] > field_size:
             continue
           s = 6
@@ -95,7 +95,7 @@ def pfield_path(robot, obstacles, field_size):
           delx, dely, loc, r = add_obstacle(X, Y, s, r, delx, dely, loc, goal, gridsize)
           print(f"Finished #{i}")
           ax.add_patch(plt.Circle(loc, r, color='m')) #
-        #ax.add_patch(plt.Polygon(obs.path, facecolor='m')) #
+        #ax.add_patch(plt.Polygon(obs.border, facecolor='m')) #
     
     ax.add_patch(plt.Circle(seek_points[0], 1, color='r'))
     ax.quiver(X, Y, delx, dely)
