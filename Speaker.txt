@@ -18,8 +18,8 @@ pygame.mixer.init()
 pygame.mixer.set_num_channels(4)
 
 channels = {
-  "short_sfx": pygame.mixer.Channel(0)
-  "bg_sfx": pygame.mixer.Channel(1)
+  "short_sfx": pygame.mixer.Channel(0),
+  "bg_sfx": pygame.mixer.Channel(1),
   "commentary_sfx": pygame.mixer.Channel(2)
 }
 
