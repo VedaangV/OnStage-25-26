@@ -137,6 +137,14 @@ def updTagPos(cam, group, anchors, field_size, get_rotation = False):
                 tags_detected = tags_detected + 1
                 p = Point(r.center[0], r.center[1])
                 p = convertPos(p, anchors[0].coords, anchors[1].coords, anchors[2].coords, field_size)
+                if p.x > field_size:
+                    p.x = field_size
+                if p.x < 0:
+                    p.x = 0
+                if p.y > field_size:
+                    p.y = field_size
+                if p.y < 0:
+                    p.y = 0
                 group[i].coords = p
                 if (get_rotation == True):
                     group[i].rotation = apriltag_rot(r)
@@ -204,20 +212,20 @@ def updObsPos(cam, obstacles, Lhsv, Uhsv, anchors, field_size):
                 minDist = point.distance_to(centroid)
             if (point.distance_to(centroid) > maxDist):
                 maxDist = point.distance_to(centroid)
-            obstacles[obstacle_count].path.append([point.x, point.y])
+            obstacles[obstacle_count].border.append([point.x, point.y])
         if (minDist == 80 or maxDist == 0):
             return -1
         obstacles[obstacle_count].radius = (minDist + maxDist) / 2
         
-        num_segments = len(obstacles[obstacle_count].path)
+        num_segments = len(obstacles[obstacle_count].border)
         for i in range(num_segments):
-            addpts = np.linspace([int(obstacles[obstacle_count].path[i][0]), int(obstacles[obstacle_count].path[i][1])], [int(obstacles[obstacle_count].path[i+1][0]), int(obstacles[obstacle_count].path[i+1][1])], int(obstacles[obstacle_count].radius * 1))
+            addpts = np.linspace([int(obstacles[obstacle_count].border[i][0]), int(obstacles[obstacle_count].border[i][1])], [int(obstacles[obstacle_count].border[i+1][0]), int(obstacles[obstacle_count].border[i+1][1])], int(obstacles[obstacle_count].radius * 1))
             addpts = addpts.tolist()
-            obstacles[obstacle_count].path.extend(addpts) 
+            obstacles[obstacle_count].border.extend(addpts) 
         
         print(str(obstacle_count) + ": " + str(obstacles[obstacle_count].radius)) #testing#
         obstacle_count = obstacle_count + 1
     
-    if obstacle_count == len(obstacles):
+    if obstacle_count >= len(obstacles):
         return 1, ctrs
     return 0, ctrs
