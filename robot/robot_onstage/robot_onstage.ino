@@ -11,6 +11,7 @@ const char* password = "todbot1234";
 
 float vx = 0.0;
 float vy = 0.0;
+float r = 0.0;
 
 #define LED 21
 String inputBuffer = "";
@@ -49,13 +50,9 @@ void setup() {
   digitalWrite(LED_BUILTIN, HIGH);
   delay(500);
 
-
-
-
 }
 
 void loop() {
-
   WiFiClient client = server.available(); // Check for a new client connection
   Serial.println(WiFi.localIP());
   if (client) {
@@ -65,10 +62,11 @@ void loop() {
         char c = client.read(); // Read a character
         if (c == '\n') {
           parseVelocity(inputBuffer);
-          Serial.print(vx);
+          Serial.println(vx);
           Serial.println(vy);
+          Serial.println(r);
           inputBuffer = "";
-          vmotor(vx, vy, 0); 
+          vmotor(vx, vy, r); 
         } 
         else {
           inputBuffer += c;
@@ -81,15 +79,20 @@ void loop() {
 }
 
 void parseVelocity(String data) {
-  int comma = data.indexOf(",");
-  if (comma == -1) return;
+  int xpos = data.indexOf("x");
+  int ypos = data.indexOf("y");
+  int rpos  = data.indexOf("r");
+  if (xpos == -1 || ypos == -1 || rpos == -1) return;
 
-  String vxStr = data.substring(data.indexOf("x:") + 3, comma);
-  String vyStr = data.substring(data.indexOf("y:") + 3, data.length());
+  String vxStr = data.substring(data.indexOf("x:") + 3, ypos-3);
+  String vyStr = data.substring(data.indexOf("y:") + 3, rpos-2);
+  String rStr = data.substring(data.indexOf("r:") + 3, data.length());
 
   vxStr.trim();
   vyStr.trim();
+  rStr.trim();
 
   vx = vxStr.toFloat();
   vy = vyStr.toFloat();
+  r = rStr.toFloat();
 }
