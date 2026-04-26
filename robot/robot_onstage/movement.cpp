@@ -9,7 +9,6 @@ const int encoderPinA = 3;
 const int encoderPinB = 2;
 volatile long encoderTicks = 0;
 
-
 //motor functions
 //motor mapping
 int cmap(int val, int olow, int ohigh, int mlow, int mhigh) {
@@ -34,12 +33,16 @@ void Motor::speed(int val) {
 
 //function: set motor speeds
 void motor(int speed1, int speed2, int speed3) {
-  float fmults[] = {1.4, 1.2, 1};
-  float bmults[] = {1.5, 1.5, 1};
+  // float fmults[] = {1.4, 1.2, 1};
+  // float bmults[] = {1.5, 1.5, 1};
   
-  Motor1.speed(speed1*((speed1>0) ? fmults[0] : bmults[0]));
-  Motor2.speed(speed2*((speed2>0) ? fmults[1] : bmults[1]));
-  Motor3.speed(speed3*((speed3>0) ? fmults[2] : bmults[2]));
+  // Motor1.speed(speed1*((speed1>0) ? fmults[0] : bmults[0]));
+  // Motor2.speed(speed2*((speed2>0) ? fmults[1] : bmults[1]));
+  // Motor3.speed(speed3*((speed3>0) ? fmults[2] : bmults[2]));
+
+  Motor1.speed(speed1);
+  Motor2.speed(speed2);
+  Motor3.speed(speed3);
 }
 
 float degtorad(int degrees) {
@@ -50,16 +53,20 @@ float degtorad(int degrees) {
 //function: set motor speeds based on velocity
 const float radius = 0.346; //ft
 const float ftsToSpeed = 157.65;
+const float Kd = 0;
 void vmotor(float Vx, float Vy, float rotation) {
+  static prev_rot;
   
-  int s1 = ftsToSpeed * (Vx*cos(degtorad(60)) + Vy*sin(degtorad(60)) + (radius * degtorad(rotation))); //right motor
-  int s2 = ftsToSpeed * (Vx*cos(degtorad(300)) + Vy*sin(degtorad(300)) + (radius * degtorad(rotation))); //left motor
-  int s3 = ftsToSpeed * (Vx*cos(degtorad(180)) + Vy*sin(degtorad(180)) + (radius * degtorad(rotation))); //back motor
+  int s1 = ftsToSpeed * (Vx*cos(degtorad(60)) + Vy*sin(degtorad(60)) + (radius * degtorad(rotation)) + (degtorad(rotation) - degtorad(prev_rot))*Kd); //right motor
+  int s2 = ftsToSpeed * (Vx*cos(degtorad(300)) + Vy*sin(degtorad(300)) + (radius * degtorad(rotation)) + (degtorad(rotation) - degtorad(prev_rot))*Kd); //left motor
+  int s3 = ftsToSpeed * (Vx*cos(degtorad(180)) + Vy*sin(degtorad(180)) + (radius * degtorad(rotation)) + (degtorad(rotation) - degtorad(prev_rot))*Kd); //back motor
 
   Serial.println(s1);
   Serial.println(s2);
   Serial.println(s3);
   motor(s1, s2, s3);
+
+  prev_rot = rotation;
 }
 
 void handleEncoder() {
