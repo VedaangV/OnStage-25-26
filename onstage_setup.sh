@@ -1,5 +1,5 @@
-apt update
-apt install python3-pip
+sudo apt update
+sudo apt install python3-pip
 
 pip install numpy
 pip install opencv-python
@@ -7,8 +7,8 @@ pip install munkres
 pip install pygame
 pip install apriltag
 
-apt-get install pulseaudio-module-bluetooth
-apt install git
+sudo apt-get install pulseaudio-module-bluetooth
+sudo apt install git
 
 cd
 mkdir onstage
