@@ -10,8 +10,9 @@ from munkres import Munkres, print_matrix
 ### import subfiles ###
 from OnStage_Rcoords import updTagPos, updObsPos, initAnchors
 from OnStage_WifiComms import wifi_connect, wifi_write, wifi_read, wifi_disconnect
-from OnStage_pfield import pfield_path ###
-from OnStage_CBF import CBFController, cbf_follow_path, cbf_stop_robot ###
+#from OnStage_pfield import pfield_path 
+from OnStage_CBF import CBFController, cbf_follow_path, cbf_stop_robot
+from OnStage_Audio import play_sound
 
 MAX_PLANT_GROWTH = 4
 ENABLE_WIFI = True
@@ -175,13 +176,14 @@ cam = VideoStream()
 #     print("Failed to open camera")
 #     exit()
     
-def displayElements(img, anchors, robots, field_size):
+def displayElements(img, anchors, robots, obstacles, field_size):
     for robot in robots:
         cv2.circle(img, (int(robot.coords.x / field_size * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.coords.y / field_size * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 7, (0, 100, 255), -1)
         for i in range(len(robot.path)):
             cv2.circle(img, (int(robot.path[i][0] / field_size * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.path[i][1] / field_size * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 3, (0, 255, 255), -1)
         if robot.target is not None:
             cv2.circle(img, (int(robot.target.coords.x / field_size * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.target.coords.y / field_size * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 5, (0, 255, 0), -1)
+    # add obstacle display 
     return img
 
 # def followPath(robot):
@@ -386,7 +388,7 @@ if __name__ == "__main__":
                 continue
         
         if (err != -1):
-            img = displayElements(img, anchors, robots, field_width)
+            img = displayElements(img, anchors, robots, obstacles, field_width)
             cv2.imshow("Testing", img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
