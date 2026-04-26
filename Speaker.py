@@ -1,16 +1,16 @@
-navigate to:
-/lib/systemd/system/bluetooth.service.d/nv-bluetooth-service.conf
+# navigate to:
+# /lib/systemd/system/bluetooth.service.d/nv-bluetooth-service.conf
 
-edit line:
-ExecStart=/usr/lib/bluetooth/bluetoothd -d --noplugin=audio,a2dp,avrcp
-to:
-ExecStart=/usr/lib/bluetooth/bluetoothd -d
+# edit line:
+# ExecStart=/usr/lib/bluetooth/bluetoothd -d --noplugin=audio,a2dp,avrcp
+# to:
+# ExecStart=/usr/lib/bluetooth/bluetoothd -d
 
-run:
-sudo apt-get update
-sudo apt-get install pulseaudio-module-bluetooth
+# run:
+# sudo apt-get update
+# sudo apt-get install pulseaudio-module-bluetooth
 
-CODE FOR AUDIO:
+# CODE FOR AUDIO:
 
 import pygame
 
