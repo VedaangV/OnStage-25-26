@@ -1,3 +1,8 @@
+if [ "$EUID" -ne 0 ]; then 
+  sudo "$0" "$@"
+  exit
+fi
+
 sudo apt update
 sudo apt install python3-pip
 
