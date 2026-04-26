@@ -1,10 +1,5 @@
-if [ "$EUID" -ne 0 ]; then 
-  sudo "$0" "$@"
-  exit
-fi
-
-sudo apt update
-sudo apt install python3-pip
+apt update
+apt install python3-pip
 
 pip install numpy
 pip install opencv-python
@@ -12,8 +7,8 @@ pip install munkres
 pip install pygame
 pip install apriltag
 
-sudo apt-get install pulseaudio-module-bluetooth
-sudo apt install git
+apt-get install pulseaudio-module-bluetooth
+apt install git
 
 cd
 mkdir onstage
