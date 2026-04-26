@@ -122,13 +122,13 @@ field_length = 80  #ft  #scales y dimension of relative coordinates
 # gamma        : CBF aggressiveness — raise if robots get too close to obstacles/each other
 # k_att        : waypoint attraction strength
 # safety_margin: extra clearance in field units (on top of robot + obstacle radii)
-cbf = CBFController(gamma=1.5, k_att=1.2, safety_margin=2.0)
+cbf = CBFController(gamma=0.5, k_att=1.375, safety_margin=3.0)
 
 ### setup camera ###
 class VideoStream:
     def __init__(self):
         gst_pipeline = (
-            "souphttpsrc location=http://192.168.32.215:8080/video is-live=true ! "
+            "souphttpsrc location=http://192.168.32.214:8080/video is-live=true ! "
             "multipartdemux ! jpegdec ! videoconvert ! "
             "video/x-raw,format=BGR ! appsink drop=true max-buffers=1 sync=false"
         )
