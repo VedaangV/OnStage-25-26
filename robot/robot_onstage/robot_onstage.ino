@@ -8,7 +8,6 @@ WiFiServer server(5000); // Listen on port 80
 const char* ssid = "StormingKids";
 const char* password = "todbot1234";
 
-
 float vx = 0.0;
 float vy = 0.0;
 float r = 0.0;
@@ -53,6 +52,8 @@ void setup() {
 }
 
 void loop() {
+  //vmotor(0.3, 0.3, 0); //test motors
+
   WiFiClient client = server.available(); // Check for a new client connection
   Serial.println(WiFi.localIP());
   if (client) {
