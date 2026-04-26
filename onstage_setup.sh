@@ -6,6 +6,7 @@ pip install munkres
 pip install pygame
 pip install apriltag
 sudo apt install v4l2loopback-dkms
+sudo apt install ffmpeg
 sudo apt-get install pulseaudio-module-bluetooth
 
 sudo apt install git
