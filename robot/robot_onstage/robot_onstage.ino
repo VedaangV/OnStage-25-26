@@ -52,7 +52,18 @@ void setup() {
 }
 
 void loop() {
-  //vmotor(0.3, 0.3, 0); //test motors
+
+  // vmotor(0.4, 0.4, 0);
+  // delay(1000);
+  // vmotor(0, 0, 0);
+  // delay(1000);
+
+  // motor(50, 0, 0);
+  // delay(1500);
+  // motor(0, 50, 0);
+  // delay(1000);
+  // motor(0, 0, 50);
+  // delay(500);
 
   WiFiClient client = server.available(); // Check for a new client connection
   Serial.println(WiFi.localIP());
