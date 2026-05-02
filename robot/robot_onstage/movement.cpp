@@ -55,14 +55,21 @@ const float radius = 0.346; //ft
 const float ftsToSpeed = 157.65;
 const float Kd = 0;
 void vmotor(float Vx, float Vy, float rotation) {
-  static prev_rot;
+  static float prev_rot;
   
-  int s1 = ftsToSpeed * (Vx*cos(degtorad(60)) + Vy*sin(degtorad(60)) + (radius * degtorad(rotation)) + (degtorad(rotation) - degtorad(prev_rot))*Kd); //right motor
-  int s2 = ftsToSpeed * (Vx*cos(degtorad(300)) + Vy*sin(degtorad(300)) + (radius * degtorad(rotation)) + (degtorad(rotation) - degtorad(prev_rot))*Kd); //left motor
-  int s3 = ftsToSpeed * (Vx*cos(degtorad(180)) + Vy*sin(degtorad(180)) + (radius * degtorad(rotation)) + (degtorad(rotation) - degtorad(prev_rot))*Kd); //back motor
+  // int s1 = ftsToSpeed * (Vx*cos(degtorad(300)) + Vy*sin(degtorad(300)) + (radius * degtorad(rotation)) + (degtorad(rotation) - degtorad(prev_rot))*Kd); //right motor
+  // int s2 = ftsToSpeed * (Vx*cos(degtorad(60)) + Vy*sin(degtorad(60)) + (radius * degtorad(rotation)) + (degtorad(rotation) - degtorad(prev_rot))*Kd); //left motor
+  // int s3 = ftsToSpeed * (Vx*cos(degtorad(180)) + Vy*sin(degtorad(180)) + (radius * degtorad(rotation)) + (degtorad(rotation) - degtorad(prev_rot))*Kd); //back motor
 
+  int s1 = ftsToSpeed * (-Vx/2 - sqrt(3)*Vy/2 + radius * degtorad(rotation) + degtorad(prev_rot)*Kd);
+  int s2 = ftsToSpeed * (-Vx/2 + sqrt(3)*Vy/2 + radius * degtorad(rotation) + degtorad(prev_rot)*Kd);
+  int s3 = ftsToSpeed * (Vx + radius * degtorad(rotation) + degtorad(prev_rot)*Kd);
+
+  Serial.print("Left motor: ");
   Serial.println(s1);
+  Serial.print("Right motor: ");
   Serial.println(s2);
+  Serial.print("Back motor: ");
   Serial.println(s3);
   motor(s1, s2, s3);
 
