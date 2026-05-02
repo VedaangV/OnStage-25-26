@@ -1,13 +1,18 @@
 #include <Wire.h>
 #include <WiFi.h>
+#include <Adafruit_NeoPixel.h>
 
-#define PORT 
+#define PORT 81
 
 const char* ssid = "StormingKids";
 const char* pswd = "todbot1234";
 
 WiFiServer server(PORT);
 WiFiClient client;
+
+#define PIXEL_PIN 16  
+#define PIXEL_COUNT 24
+Adafruit_NeoPixel strip(PIXEL_COUNT, PIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
 void setup() {
   Serial.begin(115200);
@@ -25,13 +30,35 @@ void setup() {
 
   server.begin();
   Wire.begin();
+
+  strip.begin(); // Initialize NeoPixel strip object (REQUIRED)
+  strip.show();  // Initialize all pixels to 'off'
 }
 
+const int levels = 4;
+int brightness = 50;
+int num_active = PIXEL_COUNT;
+
 void deplete() {
-  //deplete ice code here
+  brightness -= 10;
+  num_active -= PIXEL_COUNT / levels;
+  for(int i = 0; i < PIXEL_COUNT; i++) {
+    if (i < levels) {
+      strip.setPixelColor(i, strip.Color(brightness, brightness, brightness));
+    }
+    else {
+      strip.setPixelColor(i, strip.Color(0, 0, 0));
+    }
+  } 
+  strip.show();
 }
 
 void loop() {
+  for(int i = 0; i < PIXEL_COUNT; i++) {
+    strip.setPixelColor(i, strip.Color(brightness, brightness, brightness));
+  } 
+  strip.show();
+
   /* Testing w/ wifi*/ 
   client = server.accept();
   if (client) {
@@ -46,5 +73,4 @@ void loop() {
     client.stop();
     Serial.println("Client disconnected");
   }  
-
 }
