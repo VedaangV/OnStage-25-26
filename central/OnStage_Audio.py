@@ -24,10 +24,10 @@ channels = {
 }
 
 audios = {
-  "mining": pygame.mixer.Sound("MINING.mp3")
+  "mining": pygame.mixer.Sound("MINING.mp3") 
+  "watering": pygame.mixer.Sound("WATERING.mp3")
 }
 
-# play audio for ice
 def play_sound(channel, name):
   channels[channel].play(audios[name])
 
