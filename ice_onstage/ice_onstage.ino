@@ -12,7 +12,7 @@ WiFiClient client;
 
 #define PIXEL_PIN 16  
 #define PIXEL_COUNT 24
-Adafruit_NeoPixel strip(PIXEL_COUNT, PIXEL_PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel ring(PIXEL_COUNT, PIXEL_PIN, NEO_RGBW + NEO_KHZ800);
 
 void setup() {
   Serial.begin(115200);
@@ -31,35 +31,46 @@ void setup() {
   server.begin();
   Wire.begin();
 
-  strip.begin(); // Initialize NeoPixel strip object (REQUIRED)
-  strip.show();  // Initialize all pixels to 'off'
+  ring.begin(); // Initialize NeoPixel ring object (REQUIRED)
+  ring.show();  // Initialize all pixels to 'off'
 }
 
 const int levels = 4;
-int brightness = 50;
 int num_active = PIXEL_COUNT;
 
 void deplete() {
-  brightness -= 10;
   num_active -= PIXEL_COUNT / levels;
   for(int i = 0; i < PIXEL_COUNT; i++) {
-    if (i < levels) {
-      strip.setPixelColor(i, strip.Color(brightness, brightness, brightness));
+    if (i < num_active) {
+      ring.setPixelColor(i, ring.Color(0, 0, 10, 40));
     }
     else {
-      strip.setPixelColor(i, strip.Color(0, 0, 0));
+      ring.setPixelColor(i, ring.Color(0, 0, 0, 0));
     }
   } 
-  strip.show();
+  ring.show();
+  delay(100);
 }
 
 void loop() {
   for(int i = 0; i < PIXEL_COUNT; i++) {
-    strip.setPixelColor(i, strip.Color(brightness, brightness, brightness));
+    ring.setPixelColor(i, ring.Color(0, 0, 10, 40));
   } 
-  strip.show();
+  ring.show();
 
-  /* Testing w/ wifi*/ 
+  //*** testing ***//
+  // delay(1000);
+  // for(int i = 0; i < levels; i++) {
+  //   deplete();
+  //   delay(1000);
+  // }
+  // for(int i = 0; i < PIXEL_COUNT; i++) {
+  //   ring.setPixelColor(i, ring.Color(0, 0, 0, 0));
+  // } 
+  // while(1);
+  //*** testing ***//
+
+  //main process
   client = server.accept();
   if (client) {
     while (client.connected()) {
