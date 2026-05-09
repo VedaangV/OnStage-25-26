@@ -14,6 +14,7 @@ import os
 import cv2
 import numpy as np
 import math
+import copy
 
 module_dir = os.path.abspath('/home/pi/onstage/python/apriltag/lib/python3.11/site-packages')
 sys.path.append(module_dir)
@@ -24,7 +25,7 @@ detector = apriltag.Detector(options)
 
 os.environ["OPENCV_LOG_LEVEL"] = "OFF"
 
-AREA_THRESHOLD = 2
+AREA_THRESHOLD = 5
 
 ### objects ###
 class Point:
@@ -155,7 +156,9 @@ def updTagPos(cam, group, anchors, field_size, get_rotation = False):
         return 1, rgb
     return 0, rgb
 
-def updObsPos(cam, obstacles, Lhsv, Uhsv, anchors, field_size):
+canny_LOW = 50
+canny_HIGH = 100
+def updObsPos(cam, obstacles, Lhsv, Uhsv, anchors, field_size, background = False):
     ### get image as RGB ###
     ret, frame = cam.read()
     if not ret:
@@ -170,8 +173,10 @@ def updObsPos(cam, obstacles, Lhsv, Uhsv, anchors, field_size):
     ### HSV filter ###
     frame_HSV = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     frame_threshold = cv2.inRange(frame_HSV, (Lhsv[0], Lhsv[1], Lhsv[2]), (Uhsv[0], Uhsv[1], Uhsv[2]))
+    if background == True:
+        frame_threshold = cv2.bitwise_not(frame_threshold)
     
-    ### get contours
+    ### get contours ###
     contours, hierarchy = cv2.findContours(frame_threshold, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contours = sorted(contours, key=cv2.contourArea, reverse=True)
     
@@ -179,7 +184,7 @@ def updObsPos(cam, obstacles, Lhsv, Uhsv, anchors, field_size):
     ctrs = np.zeros((h, w, 1), dtype=np.uint8)
     cv2.drawContours(ctrs, contours, -1, 255)
     
-    ### get boundaries ###
+    ### filter based on area ###
     temp = []
     for idx in range(len(contours)):
         if cv2.contourArea(contours[idx]) >= AREA_THRESHOLD:
@@ -191,8 +196,15 @@ def updObsPos(cam, obstacles, Lhsv, Uhsv, anchors, field_size):
         return 0, ctrs
     for idx, cnt in enumerate(contours):
         if len(obstacles) == obstacle_count:
-            break
+            obstacles.append(copy.deepcopy(obstacles[0]))
+            obstacles[-1].coords.x = -1
+            obstacles[-1].coords.y = -1
+            obstacles[-1].border = []
+            obstacles[-1].radius = 0
+            
         M = cv2.moments(cnt)
+        
+        ### .coords = centoid ###
         if M["m00"] != 0:
             centroid = Point(int(M['m10']/M['m00']), int(M['m01']/M['m00']))
         else:
@@ -201,31 +213,26 @@ def updObsPos(cam, obstacles, Lhsv, Uhsv, anchors, field_size):
         centroid = convertPos(centroid, anchors[0].coords, anchors[1].coords, anchors[2].coords, field_size)
         obstacles[obstacle_count].coords = centroid
         
-        rect = cv2.minAreaRect(cnt)
-        box = cv2.boxPoints(rect)
+        ### .radius = average of max and min dist from centoid along contour ###
+        points = cnt.reshape(-1, 2)
         minDist = field_size
         maxDist = 0
-        for i in range(len(box)):
-            point = Point(box[i][0], box[i][1])
+        for i in range(len(points)):
+            point = Point(points[i][0], points[i][1])
             point = convertPos(point, anchors[0].coords, anchors[1].coords, anchors[2].coords, field_size)
             if (point.distance_to(centroid) < minDist):
                 minDist = point.distance_to(centroid)
             if (point.distance_to(centroid) > maxDist):
                 maxDist = point.distance_to(centroid)
-            obstacles[obstacle_count].border.append([point.x, point.y])
+            ### .border = points along edge of contour ###
+            obstacles[obstacle_count].border.append([point.x, point.y]) ### 
         if (minDist == 80 or maxDist == 0):
             return -1
         obstacles[obstacle_count].radius = (minDist + maxDist) / 2
         
-        num_segments = len(obstacles[obstacle_count].border)
-        for i in range(num_segments):
-            addpts = np.linspace([int(obstacles[obstacle_count].border[i][0]), int(obstacles[obstacle_count].border[i][1])], [int(obstacles[obstacle_count].border[i+1][0]), int(obstacles[obstacle_count].border[i+1][1])], int(obstacles[obstacle_count].radius * 1))
-            addpts = addpts.tolist()
-            obstacles[obstacle_count].border.extend(addpts) 
-        
         print(str(obstacle_count) + ": " + str(obstacles[obstacle_count].radius)) #testing#
         obstacle_count = obstacle_count + 1
     
-    if obstacle_count >= len(obstacles):
+    if obstacle_count > 0:
         return 1, ctrs
     return 0, ctrs
