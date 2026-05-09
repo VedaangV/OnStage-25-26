@@ -12,9 +12,11 @@ from OnStage_Rcoords import updTagPos, updObsPos, initAnchors
 from OnStage_WifiComms import wifi_connect, wifi_write, wifi_read, wifi_disconnect
 #from OnStage_pfield import pfield_path 
 from OnStage_CBF import CBFController, cbf_follow_path, cbf_stop_robot
-from OnStage_Audio import play_sound
+#from OnStage_Audio import play_sound
 
-MAX_PLANT_GROWTH = 4
+#print(cv2.getBuildInformation()) #check for gstreamer
+
+MAX_LEVEL = 4
 ENABLE_WIFI = True
 
 states = ["None", "Waiting", "Ice", "Plant"]
@@ -84,7 +86,7 @@ class plant:
         self.port = port
         self.tag = tag
     def grow(self):
-        if (self.level < MAX_PLANT_GROWTH):
+        if (self.level < MAX_LEVEL):
             self.level = self.level + 1
 #             if ENABLE_WIFI == True:
 #                 wifi_write(self.sock, "G")
@@ -93,27 +95,33 @@ class ice:
     tag: int
     IP: str
     port: int
-    sock: None
+    sock = None
     coords: Point = Point(-1, -1)
-    level: int
+    level: int = MAX_LEVEL
     available: bool = True
     
-    def __init__(self, tag, level):
+    def __init__(self, IP, port, tag):
+        self.IP = IP
+        self.port = port
         self.tag = tag
-        self.level = level
     def deplete(self):
         if (self.level > 0):
             self.level = self.level - 1
+#             if ENABLE_WIFI == True:
+#                 wifi_write(self.sock, "D")
 
-robots = [robot("192.168.32.152", 5000, 0)]   #AT tag 5
+robots = [robot("192.168.32.147", 5000, 0)]   #AT tag 5
 anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
 
-obstacles = []#[obstacle(), obstacle(), obstacle()] #[]
-plants = [plant("192.168.32.209", 80, 4)]#[plant("192.168.32.209", 80, 4)]#[plant(WIFI_IP, 80, 4)]  #AT tag 4
-icepatches = [ice(5, 1)]  #AT tag 3
+obstacles = [obstacle()]
+plants = [plant("192.168.32.209", 80, 7)]#[plant("192.168.32.209", 80, 4)]#[plant(WIFI_IP, 80, 4)]  #AT tag 4
+icepatches = [ice("192.168.32.118", 81, 4)]  
 
-obstacle_Lhsv = [160, 225, 130]
-obstacle_Uhsv = [180, 255, 240]
+#obstacle_Lhsv = [0, 145, 200]    #color of obstacle (red)
+#obstacle_Uhsv = [15, 205, 255]
+obstacle_Lhsv = [0, 10, 0]    #color of background (brown)
+obstacle_Uhsv = [30, 255, 235]
+
 
 field_width = 80  #ft  #scales x dimension of relative coordinates
 field_length = 80  #ft  #scales y dimension of relative coordinates
@@ -130,8 +138,11 @@ class VideoStream:
     def __init__(self):
         gst_pipeline = (
             "souphttpsrc location=http://192.168.32.214:8080/video is-live=true ! "
-            "multipartdemux ! jpegdec ! videoconvert ! "
-            "video/x-raw,format=BGR ! appsink drop=true max-buffers=1 sync=false"
+            "multipartdemux ! "
+            "jpegdec ! "
+            "videoconvert ! "
+            "video/x-raw, format=BGR ! "
+            "appsink drop=true max-buffers=1 sync=false"
         )
         self.cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
         if not self.cap.isOpened():
@@ -147,6 +158,11 @@ class VideoStream:
     def update(self):
         while self.running:
             ret, frame = self.cap.read()
+            # control Contrast 
+            alpha = 1
+            # control brightness
+            beta = 0
+            frame = cv2.convertScaleAbs(frame, alpha=alpha, beta=beta) 
             if ret:
                 with self.lock:
                     self.ret = ret
@@ -161,21 +177,7 @@ class VideoStream:
         self.cap.release()
         
 cam = VideoStream()
-        
-# camera_port = 0
-# camera_width = 640; camera_height = 480
-# camera_fps = 30;
-# 
-# cam = cv2.VideoCapture(camera_port)
-# cam.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
-# cam.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
-# cam.set(cv2.CAP_PROP_FPS, camera_fps)
-# cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
 
-# if not cam.isOpened():
-#     print("Failed to open camera")
-#     exit()
-    
 def displayElements(img, anchors, robots, obstacles, field_size):
     for robot in robots:
         cv2.circle(img, (int(robot.coords.x / field_size * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.coords.y / field_size * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 7, (0, 100, 255), -1)
@@ -183,41 +185,15 @@ def displayElements(img, anchors, robots, obstacles, field_size):
             cv2.circle(img, (int(robot.path[i][0] / field_size * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.path[i][1] / field_size * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 3, (0, 255, 255), -1)
         if robot.target is not None:
             cv2.circle(img, (int(robot.target.coords.x / field_size * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.target.coords.y / field_size * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 5, (0, 255, 0), -1)
-    # add obstacle display 
+        
+        for obs in obstacles:
+            pts = np.array(obs.border)
+            for i in range(len(pts)):
+                pts[i][0] = pts[i][0] / field_size * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x
+                pts[i][1] = anchors[2].coords.y - pts[i][1] / field_size * (abs(anchors[0].coords.y - anchors[2].coords.y))
+            pts = pts.astype(np.int32)
+            cv2.polylines(img, [pts], isClosed=True, color=(0, 0, 255), thickness=1)
     return img
-
-# def followPath(robot):
-#     if (robot.coords.distance_to(robot.target.coords) < DIST_THRESHOLD):
-#         return True
-#     if (len(robot.path) > 0 and robot.coords.distance_to(Point(robot.path[0][0], robot.path[0][1])) < DIST_THRESHOLD):
-#         robot.path.pop(0)
-#     for i in range(len(robot.path)):
-#         if (robot.coords.distance_to(Point(robot.path[0][0], robot.path[0][1])) > robot.coords.distance_to(Point(robot.path[i][0], robot.path[i][1]))):
-#             for j in range(i):
-#                 robot.path.pop(0)
-#             break
-#     if not robot.path:
-#         robot.path.append([robot.target.coords.x, robot.target.coords.y])
-#         
-# #     print("Robot coords: " + f"{robot.coords.x:.2f}" + ", " + f"{robot.coords.y:.2f}") #testing#
-# #     print("Next point coords: " + f"{robot.path[0][0]:.2f}" + ", " + f"{robot.path[0][1]:.2f}") #testing#
-# #     print("Target coords: " + f"{robot.target.coords.x:.2f}" + ", " + f"{robot.target.coords.y:.2f}") #testing#
-#     dx = robot.path[0][0] - robot.coords.x
-#     dy = robot.path[0][1] - robot.coords.y
-#     d = math.sqrt(dx**2 + dy**2)
-# #     print("dx: " + f"{dx:.2f}" + ", " + "dy: " + f"{dy:.2f}") #testing#
-# #     print("dist: " + f"{robot.coords.distance_to(Point(robot.path[0][0], robot.path[0][1])):.2f}") #testing#
-# #     print('\n\n') #testing#
-#     V = baseV
-#     Vx = V * dx / d
-#     Vy = V * dy / d
-#     if ENABLE_WIFI == True:
-#         wifi_write(robot.sock, f"vx: {Vx:.0f}, vy: {Vy:.0f}\n")
-#     return False
-# 
-# def stopRobot(robot):
-#     if ENABLE_WIFI == True:
-#         wifi_write(robot.sock, "vx: 0, vy: 0\n")
     
 def assignTargets(robots, icepatches, plants): # system = plants or ice
     ### assign targets using matrix calculations ###
@@ -299,6 +275,18 @@ if __name__ == "__main__":
             break
     cv2.destroyAllWindows()
     
+    ### initialize wifi ###
+    if ENABLE_WIFI == True:
+        for robot in robots:
+            while (robot.sock == None or robot.sock == -1):
+                robot.sock = wifi_connect(robot.IP, robot.port)
+#         for plant in plants:
+#             while (plant.sock == None or plant.sock == -1):
+#                 plant.sock = wifi_connect(plant.IP, plant.port)
+#         for ice in icepatches:
+#             while (ice.sock == None or ice.sock == -1):
+#                 ice.sock = wifi_connect(ice.IP, ice.port)
+    
     ### initialize tags/positions ###
     # anchors
     while (res := initAnchors(cam, anchors))[0] != 1:
@@ -335,23 +323,26 @@ if __name__ == "__main__":
         cv2.imshow("Testing", img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-    if ENABLE_WIFI == True:
-        for robot in robots:
-            while (robot.sock == None or robot.sock == -1):
-                robot.sock = wifi_connect(robot.IP, robot.port)
-#         for plant in plants:
-#             while (plant.sock == None or plant.sock == -1):
-#                 plant.sock = wifi_connect(plant.IP, plant.port)
-    
+
     # obstacles
-    while (res := updObsPos(cam, obstacles, obstacle_Lhsv, obstacle_Uhsv, anchors, field_width))[0] != 1:
+    while (res := updObsPos(cam, obstacles, obstacle_Lhsv, obstacle_Uhsv, anchors, field_width, True))[0] != 1:
         img = res[1]
         cv2.imshow("Testing", img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-        continue
+        
+    for idx, obs in enumerate(obstacles):
+        for robot in robots:
+            if obs.coords.distance_to(robot.coords) < 2:
+                obstacles.pop(idx)
+                break
+    for idx, obs in enumerate(obstacles):
+        for i in range(len(obs.border)):
+            if (obs.border[i][0] < 0 or obs.border[i][0] > field_width or obs.border[i][1] < 0 or obs.border[i][1] > field_width):
+                obstacles.pop(idx)
+                
     
-    input("Press Enter to start")
+    time.sleep(1)
     
     ### get path of points to target ###
     assignTargets(robots, icepatches, plants)
@@ -376,7 +367,7 @@ if __name__ == "__main__":
                     robot.haswater = True
                 if (robot.state == "Plant"):
                     robot.target.grow()
-                    if robot.target.level == MAX_PLANT_GROWTH:
+                    if robot.target.level == MAX_LEVEL:
                         robot.target.available = False
                     robot.haswater = False
                 robot.state = "None"
@@ -394,4 +385,4 @@ if __name__ == "__main__":
                 break
     
     cv2.destroyAllWindows()
-    cam.release()
+    cam.stop()
