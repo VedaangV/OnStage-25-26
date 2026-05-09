@@ -6,8 +6,8 @@ from OnStage_WifiComms import wifi_write
 # ---------------------------------------------------------------------------
 
 ROBOT_RADIUS     = 3.46   # 10*ft
-DIST_THRESHOLD   = 5      # arrival threshold (field units)
-ENABLE_WIFI      = False  # sync with OnStage_Master.py
+DIST_THRESHOLD   = 8      # arrival threshold (field units)
+ENABLE_WIFI      = True  # sync with OnStage_Master.py
 baseV            = 8      # max speed (10*ft/s)
 
 PLOT_TYPE = "RADIUS_PLOT" # "RADIUS_PLOT" "BOUNDARY_PLOT"
@@ -23,6 +23,11 @@ def _poly_closest(px, py, verts):
     Returns (cx, cy, dist) — closest point on the polygon boundary to (px, py).
     verts : list of (x, y) tuples forming a closed polygon.
     """
+    if not verts:
+        raise ValueError("_poly_closest requires at least one vertex, got empty list.")
+    if len(verts) < 2:
+        # Degenerate polygon: single point — return that point
+        return verts[0][0], verts[0][1], math.sqrt((px - verts[0][0])**2 + (py - verts[0][1])**2)
     best_d2, best_c = float("inf"), (verts[0][0], verts[0][1])
     n = len(verts)
     for i in range(n):
@@ -127,7 +132,7 @@ class CBFController:
         rx, ry = robot.coords.x, robot.coords.y
 
         for obs in obstacles:
-            if hasattr(obs, "border"):                       # polygon obstacle
+            if hasattr(obs, "border"):
                 h, gx, gy = self._polygon_constraint(
                     rx, ry, obs.border, self.safety_margin)
             else:                                              # circular obstacle
@@ -204,8 +209,7 @@ def cbf_follow_path(cbf, robot, all_robots, obstacles):
     robot.path = [[robot.target.coords.x, robot.target.coords.y]]
 
     if ENABLE_WIFI:
-        wifi_write(robot.sock,
-                   f"vx: {Vx/10:.3f}, vy: {Vy/10:.3f}, r: {robot.rotation:.0f}\n")
+        wifi_write(robot.sock, f"vx: {Vx/10:.3f}, vy: {Vy/10:.3f}, r: {robot.rotation:.0f}\n")
     return False
 
 
@@ -223,6 +227,60 @@ def cbf_stop_robot(robot):
 # ===========================================================================
 # Stand-alone simulation / visualiser
 # ===========================================================================
+
+def _offset_polygon(verts, amount):
+    """
+    Returns a new list of (x, y) vertices that is the input polygon
+    expanded outward by `amount` field units.
+
+    Algorithm: at each vertex compute the inward-facing bisector of the
+    two adjacent edge normals, then move along the outward bisector by
+    amount / sin(half-angle).  Falls back gracefully for near-degenerate
+    angles.
+
+    verts  : list of (x, y) — assumed counter-clockwise or clockwise;
+             the function normalises direction automatically.
+    amount : scalar >= 0
+    """
+    if amount <= 0:
+        return list(verts)
+
+    n = len(verts)
+
+    # Ensure counter-clockwise winding (positive area)
+    area2 = sum((verts[i][0] * verts[(i+1) % n][1] -
+                 verts[(i+1) % n][0] * verts[i][1])
+                for i in range(n))
+    if area2 < 0:
+        verts = list(reversed(verts))
+
+    # Outward unit normal for each edge (CCW → right-hand normal points outward
+    # in standard math / matplotlib coordinates where +y is up)
+    def edge_normal(a, b):
+        dx, dy = b[0]-a[0], b[1]-a[1]
+        L = math.sqrt(dx*dx + dy*dy) + 1e-12
+        return dy/L, -dx/L          # outward (right) normal for CCW polygon
+
+    normals = [edge_normal(verts[i], verts[(i+1) % n]) for i in range(n)]
+
+    new_verts = []
+    for i in range(n):
+        n1 = normals[(i - 1) % n]   # normal of edge ending at vertex i
+        n2 = normals[i]             # normal of edge starting at vertex i
+
+        # Bisector direction
+        bx, by = n1[0]+n2[0], n1[1]+n2[1]
+        blen = math.sqrt(bx*bx + by*by) + 1e-12
+        bx, by = bx/blen, by/blen
+
+        # Scale so the offset is exactly `amount` perpendicular to each edge
+        sin_half = blen / 2.0          # sin(half interior angle)
+        sin_half = max(sin_half, 0.15) # clamp for very sharp corners
+        scale = amount / sin_half
+
+        new_verts.append((verts[i][0] + bx*scale,
+                          verts[i][1] + by*scale))
+    return new_verts
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
@@ -408,11 +466,12 @@ if __name__ == "__main__":
 
         for obs in sim["obstacles"]:
             if isinstance(obs, SimPolyObstacle):
-                # Filled polygon + dashed safety "ring" (convex hull offset not drawn,
-                # just the raw polygon as a visual guide)
+                # Filled polygon + dashed offset safety "ring"
+                offset_border = _offset_polygon(
+                    obs.border, sim["cbf"].safety_margin + ROBOT_RADIUS)
                 patch = MplPolygon(obs.border, closed=True,
                                    color="#e05555", alpha=0.55, zorder=3)
-                ring  = MplPolygon(obs.border, closed=True,
+                ring  = MplPolygon(offset_border, closed=True,
                                    fill=False, edgecolor="#e0555544",
                                    linewidth=0.8, linestyle="--", zorder=2)
             else:
@@ -461,7 +520,13 @@ if __name__ == "__main__":
         sim["cbf"].k_att         = sl_katt.val
         sim["cbf"].safety_margin = sl_margin.val
         for i, obs in enumerate(sim["obstacles"]):
-            if i < len(artists["obs_rings"]) and not isinstance(obs, SimPolyObstacle):
+            if i >= len(artists["obs_rings"]):
+                continue
+            if isinstance(obs, SimPolyObstacle):
+                new_xy = _offset_polygon(
+                    obs.border, sim["cbf"].safety_margin + ROBOT_RADIUS)
+                artists["obs_rings"][i].set_xy(new_xy)
+            else:
                 artists["obs_rings"][i].set_radius(
                     obs.radius + sim["cbf"].safety_margin + ROBOT_RADIUS)
         for i in range(len(sim["robots"])):
