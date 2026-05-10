@@ -53,9 +53,11 @@ void setup() {
 
 void loop() {
 
+  // vmotor(0.4, 0, 0);
+  // delay(2000);
+  // vmotor(0, 0.4, 0);
+  // delay(1500);
   // vmotor(0.4, 0.4, 0);
-  // delay(1000);
-  // vmotor(0, 0, 0);
   // delay(1000);
 
   // motor(50, 0, 0);
