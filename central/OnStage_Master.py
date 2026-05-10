@@ -110,7 +110,7 @@ class ice:
 #             if ENABLE_WIFI == True:
 #                 wifi_write(self.sock, "D")
 
-robots = [robot("192.168.32.147", 5000, 0)]   #AT tag 5
+robots = [robot("192.168.32.152", 5000, 0), robot("192.168.32.147", 5000, 5)]  
 anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
 
 obstacles = [obstacle()]
@@ -119,25 +119,25 @@ icepatches = [ice("192.168.32.118", 81, 4)]
 
 #obstacle_Lhsv = [0, 145, 200]    #color of obstacle (red)
 #obstacle_Uhsv = [15, 205, 255]
-obstacle_Lhsv = [0, 10, 0]    #color of background (brown)
-obstacle_Uhsv = [30, 255, 235]
+obstacle_Lhsv = [0, 0, 0]    #color of background (brown)
+obstacle_Uhsv = [55, 255, 255]
 
 
-field_width = 80  #ft  #scales x dimension of relative coordinates
-field_length = 80  #ft  #scales y dimension of relative coordinates
+field_width = 40  #ft  #scales x dimension of relative coordinates
+field_length = 40  #ft  #scales y dimension of relative coordinates
 # baseV = 100 #base velocity of robot, m/s
 
 ### CBF controller ###
 # gamma        : CBF aggressiveness — raise if robots get too close to obstacles/each other
 # k_att        : waypoint attraction strength
 # safety_margin: extra clearance in field units (on top of robot + obstacle radii)
-cbf = CBFController(gamma=0.5, k_att=1.375, safety_margin=3.0)
+cbf = CBFController(gamma=1.5, k_att=2.25, safety_margin=1.25)
 
 ### setup camera ###
 class VideoStream:
     def __init__(self):
         gst_pipeline = (
-            "souphttpsrc location=http://192.168.32.214:8080/video is-live=true ! "
+            "souphttpsrc location=http://192.168.32.215:8080/video is-live=true ! "
             "multipartdemux ! "
             "jpegdec ! "
             "videoconvert ! "
@@ -183,7 +183,7 @@ def displayElements(img, anchors, robots, obstacles, field_size):
         cv2.circle(img, (int(robot.coords.x / field_size * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.coords.y / field_size * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 7, (0, 100, 255), -1)
         for i in range(len(robot.path)):
             cv2.circle(img, (int(robot.path[i][0] / field_size * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.path[i][1] / field_size * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 3, (0, 255, 255), -1)
-        if robot.target is not None:
+        if hasattr(robot, "target"):
             cv2.circle(img, (int(robot.target.coords.x / field_size * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.target.coords.y / field_size * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 5, (0, 255, 0), -1)
         
         for obs in obstacles:
@@ -330,7 +330,7 @@ if __name__ == "__main__":
         cv2.imshow("Testing", img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-        
+
     for idx, obs in enumerate(obstacles):
         for robot in robots:
             if obs.coords.distance_to(robot.coords) < 2:
@@ -340,6 +340,7 @@ if __name__ == "__main__":
         for i in range(len(obs.border)):
             if (obs.border[i][0] < 0 or obs.border[i][0] > field_width or obs.border[i][1] < 0 or obs.border[i][1] > field_width):
                 obstacles.pop(idx)
+                break
                 
     
     time.sleep(1)
@@ -364,11 +365,15 @@ if __name__ == "__main__":
                     robot.target.deplete()
                     if robot.target.level == 0:
                         robot.target.available = False
+                    else:
+                        robot.target.available = True
                     robot.haswater = True
                 if (robot.state == "Plant"):
                     robot.target.grow()
                     if robot.target.level == MAX_LEVEL:
                         robot.target.available = False
+                    else:
+                        robot.target.available = True
                     robot.haswater = False
                 robot.state = "None"
                 robot.target = None
