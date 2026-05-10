@@ -88,8 +88,8 @@ def displayTags(results, img):
         cv2.circle(img, (cX, cY), 5, (0, 0, 255), -1)
         # draw tag family
         tagFamily = r.tag_family.decode("utf-8")
-        cv2.putText(img, (str(r.tag_id) + " " + tagFamily), (ptA[0], ptA[1] - 15),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+#         cv2.putText(img, (str(r.tag_id) + " " + tagFamily), (ptA[0], ptA[1] - 15),
+#             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
     return img
     
 def initAnchors(cam, anchors):
@@ -230,7 +230,7 @@ def updObsPos(cam, obstacles, Lhsv, Uhsv, anchors, field_size, background = Fals
             return -1
         obstacles[obstacle_count].radius = (minDist + maxDist) / 2
         
-        print(str(obstacle_count) + ": " + str(obstacles[obstacle_count].radius)) #testing#
+        print(f"{obstacle_count}: radius-{obstacles[obstacle_count].radius:.2f}, area-{cv2.contourArea(cnt):.2f}") #testing#
         obstacle_count = obstacle_count + 1
     
     if obstacle_count > 0:
