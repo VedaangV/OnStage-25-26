@@ -6,9 +6,9 @@ from OnStage_WifiComms import wifi_write
 # ---------------------------------------------------------------------------
 
 ROBOT_RADIUS     = 3.46   # 10*ft
-DIST_THRESHOLD   = 8      # arrival threshold (field units)
+DIST_THRESHOLD   = 6      # arrival threshold (field units)
 ENABLE_WIFI      = True  # sync with OnStage_Master.py
-baseV            = 8      # max speed (10*ft/s)
+baseV            = 7      # max speed (10*ft/s)
 
 PLOT_TYPE = "RADIUS_PLOT" # "RADIUS_PLOT" "BOUNDARY_PLOT"
 
@@ -61,7 +61,7 @@ class CBFController:
         h(x) = ||pos - c||^2 - d_safe^2
 
     Polygon obstacle (convex or convex hull approximated):
-        h(x) = dist_to_boundary - d_safe
+        h(x) = dist_to_boundary - (ROBOT_RADIUS + safety_margin)
         Gradient points from closest boundary point toward robot.
 
     The CBF condition  grad_h · u >= -γ·h(x)  is enforced by iterative
@@ -94,15 +94,47 @@ class CBFController:
     def _polygon_constraint(rx, ry, verts, d_safe):
         """
         h = signed_dist - d_safe  where signed_dist is positive outside.
-        grad_h points from boundary toward robot (unit vector).
+
+        Gradient is a soft blend of contributions from ALL edges weighted by
+        proximity (weight = 1/d^2), rather than a hard snap to the single
+        closest point.  This eliminates the gradient discontinuity at corners
+        that caused oscillation / stalling.
         """
+        inside = _point_in_poly(rx, ry, verts)
+        sign   = -1.0 if inside else 1.0
+
+        # Primary barrier value uses closest-point distance (unchanged)
         bx, by, dist = _poly_closest(rx, ry, verts)
-        # sign: negative when robot is inside the polygon
-        sign = -1.0 if _point_in_poly(rx, ry, verts) else 1.0
-        signed = sign * dist
-        h  = signed - d_safe*2
-        n  = dist + 1e-9
-        gx, gy = sign*(rx - bx)/n, sign*(ry - by)/n
+        h = sign * dist - d_safe
+
+        # Blended gradient: accumulate weighted push directions from every edge
+        n_v = len(verts)
+        gx_acc, gy_acc, w_acc = 0.0, 0.0, 0.0
+        BLEND_RADIUS = d_safe * 3.0          # edges beyond this don't contribute
+        for i in range(n_v):
+            ax, ay = verts[i]
+            bvx, bvy = verts[(i + 1) % n_v]
+            cx, cy = _closest_point_on_segment(rx, ry, ax, ay, bvx, bvy)
+            dx, dy = rx - cx, ry - cy
+            ed = math.sqrt(dx*dx + dy*dy) + 1e-9
+            if ed > BLEND_RADIUS:
+                continue
+            w = 1.0 / (ed * ed)             # inverse-square weight
+            gx_acc += sign * w * dx / ed
+            gy_acc += sign * w * dy / ed
+            w_acc  += w
+
+        if w_acc > 1e-12:
+            gx = gx_acc / w_acc
+            gy = gy_acc / w_acc
+            # normalise to unit length
+            glen = math.sqrt(gx*gx + gy*gy) + 1e-9
+            gx, gy = gx/glen, gy/glen
+        else:
+            # fallback: direct push from closest point
+            n = dist + 1e-9
+            gx, gy = sign*(rx - bx)/n, sign*(ry - by)/n
+
         return h, gx, gy
 
     # -- helpers ---------------------------------------------------------- #
@@ -134,7 +166,7 @@ class CBFController:
         for obs in obstacles:
             if hasattr(obs, "border"):
                 h, gx, gy = self._polygon_constraint(
-                    rx, ry, obs.border, self.safety_margin)
+                    rx, ry, obs.border, ROBOT_RADIUS + self.safety_margin)
             else:                                              # circular obstacle
                 h, gx, gy = self._circle_constraint(
                     rx, ry, obs.coords.x, obs.coords.y,
@@ -173,6 +205,9 @@ class CBFController:
         Vx, Vy = self._nominal(robot)
         cons   = self._constraints(robot, obstacles, all_robots)
 
+        # Project onto all violated CBF half-spaces.
+        # _clip is intentionally OUTSIDE the inner loop so speed-clamping
+        # never re-violates a constraint that was just satisfied.
         for _ in range(self.max_iter):
             changed = False
             for h_val, gx, gy in cons:
@@ -183,9 +218,32 @@ class CBFController:
                     Vx  += corr * gx
                     Vy  += corr * gy
                     changed = True
-            Vx, Vy = self._clip(Vx, Vy, baseV)
             if not changed:
                 break
+        Vx, Vy = self._clip(Vx, Vy, baseV)
+
+        # Anti-stall: if the robot is near a constraint boundary (h < margin)
+        # and the net velocity is near zero, inject a tangential perturbation
+        # so it can slide around the obstacle rather than freezing.
+        speed = math.sqrt(Vx*Vx + Vy*Vy)
+        if speed < baseV * 0.05:
+            # Find the most violated / tightest active constraint
+            worst_gx, worst_gy, worst_h = 0.0, 0.0, float("inf")
+            for h_val, gx, gy in cons:
+                if h_val < worst_h:
+                    worst_h, worst_gx, worst_gy = h_val, gx, gy
+            if worst_h < self.safety_margin:
+                # Tangent to the constraint gradient: rotate 90°
+                tx, ty = -worst_gy, worst_gx
+                # Choose the tangent direction that has positive dot with goal
+                dx_goal = robot.target.coords.x - robot.coords.x
+                dy_goal = robot.target.coords.y - robot.coords.y
+                if tx*dx_goal + ty*dy_goal < 0:
+                    tx, ty = -tx, -ty
+                escape_speed = min(self.k_att * baseV, baseV)
+                Vx = tx * escape_speed
+                Vy = ty * escape_speed
+                Vx, Vy = self._clip(Vx, Vy, baseV)
 
         return Vx, Vy
 
@@ -283,6 +341,8 @@ def _offset_polygon(verts, amount):
     return new_verts
 
 if __name__ == "__main__":
+    ENABLE_WIFI      = False
+    
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
     from matplotlib.patches import Polygon as MplPolygon
@@ -378,9 +438,9 @@ if __name__ == "__main__":
             r = [SimRobot(10, 20, 70, 60, 0)]
             o = [
                 # Rectangular wall in the centre
-                SimPolyObstacle([(42, 52), (58, 52), (58, 68), (42, 68)]),
+                SimPolyObstacle([(42, 52), (58, 52), (58, 58), (42, 58)]),
                 # Triangle near bottom-right
-                SimPolyObstacle([(25, 25), (40, 25), (32, 40)]),
+                SimPolyObstacle([(22, 42), (38, 42), (38, 38), (22, 38)]),
             ]
 
         else:
