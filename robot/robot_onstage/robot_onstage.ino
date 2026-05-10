@@ -4,6 +4,23 @@
 //libraries
 #include <Wire.h>
 #include <WiFi.h>
+#include <Adafruit_NeoPixel.h>
+#ifdef __AVR__
+ #include <avr/power.h> // Required for 16 MHz Adafruit Trinket
+#endif
+
+// Which pin on the Arduino is connected to the NeoPixels?
+// On a Trinket or Gemma we suggest changing this to 1:
+#define LED_PIN     28
+
+// How many NeoPixels are attached to the Arduino?
+#define LED_COUNT  30
+
+// NeoPixel brightness, 0 (min) to 255 (max)
+#define BRIGHTNESS 50 // Set BRIGHTNESS to about 1/5 (max = 255)
+
+// Declare our NeoPixel strip object:
+Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRBW + NEO_KHZ800);
 WiFiServer server(5000); // Listen on port 80
 const char* ssid = "StormingKids";
 const char* password = "todbot1234";
@@ -17,6 +34,8 @@ String inputBuffer = "";
 void setup() {
   Serial.begin(115200);
   delay(1000);  
+  strip.begin();
+  strip.show();
 
   Wire.setSDA(0);
   Wire.setSCL(1);
@@ -109,4 +128,33 @@ void parseVelocity(String data) {
   vx = vxStr.toFloat();
   vy = vyStr.toFloat();
   r = rStr.toFloat();
+}
+void growBalanced(int ms){
+int time = ms/50;
+strip.clear();
+strip.show();
+for(int i = 1; i <= 50; i++){
+  setWater(i);
+  delay(time);
+}
+
+}
+void depleteBalanced(int ms){
+int time = ms/50;
+for(int i = 50; i >= 1; i--){
+  setWater(i);
+  delay(time);
+}
+}
+void setWater(int percent){
+  int num = percent/100.0 * LED_COUNT;
+  strip.clear();
+  int led = LED_COUNT/2;
+  for(int i = 0; i <= num/2; i++){
+    strip.setPixelColor(led, 0, 0, 255, 0);
+    strip.setPixelColor(LED_COUNT-led, 0, 0, 255, 0);
+    led += LED_COUNT/num;
+  }
+  strip.show();
+  
 }
