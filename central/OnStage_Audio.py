@@ -11,26 +11,28 @@
 # sudo apt-get update
 # sudo apt-get install pulseaudio-module-bluetooth
 
-### import libraries ###
-import pygame
-
-pygame.mixer.init()
-pygame.mixer.set_num_channels(4)
+pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=4096) 
+pygame.mixer.music.set_volume(1.0)
 
 channels = {
-  "short_sfx": pygame.mixer.Channel(0),
-  "bg_sfx": pygame.mixer.Channel(1),
-  "commentary_sfx": pygame.mixer.Channel(2)
+    "short_sfx": pygame.mixer.Channel(0),
+    "bg_sfx" : pygame.mixer.Channel(1),
+    "commentary_sfx" : pygame.mixer.Channel(2)
 }
 
 audios = {
-  "mining": pygame.mixer.Sound("MINING.mp3") 
-  "watering": pygame.mixer.Sound("WATERING.mp3")
+    "mining": pygame.mixer.Sound("MINING.mp3")
 }
 
+# play audio for ice
 def play_sound(channel, name):
-  channels[channel].play(audios[name])
+    _channel = channels[channel]
+    audio = audios[name]
+    _channel.play(audio)
 
-### testing ###
-if __name__ == "__main__":
-  play_sound("short_sfx", "mining")  # mining audio for ice collection
+while True:
+
+    _input = input()
+    play_sound("short_sfx", "mining")
+
+pygame.quit()
