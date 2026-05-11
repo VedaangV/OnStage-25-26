@@ -10,6 +10,13 @@
           <li>Object detection and location</li>
           <li>Target assignment logic</li>
           <li>Communication with robots</li>
+          <li>Extensive testing logic with/without WiFi; image visualization</li>
+        </ul>
+      <li>Rcoord</li>
+        <ul>
+          <li>AprilTag location, rotation, and ID detection</li>
+          <li>Obstacle detection using HSV color mask</li>
+          <li>Image annotation with AprilTag data for testing</li>
         </ul>
     </ul>
   <li>Bread</li>
