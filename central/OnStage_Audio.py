@@ -11,6 +11,9 @@
 # sudo apt-get update
 # sudo apt-get install pulseaudio-module-bluetooth
 
+import pygame
+pygame.init()
+
 pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=4096) 
 pygame.mixer.music.set_volume(1.0)
 
