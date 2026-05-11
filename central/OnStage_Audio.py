@@ -30,9 +30,10 @@ def play_sound(channel, name):
     audio = audios[name]
     _channel.play(audio)
 
-while True:
+# testing
+# while True:
 
-    _input = input()
-    play_sound("short_sfx", "mining")
+#     _input = input()
+#     play_sound("short_sfx", "mining")
 
 pygame.quit()
