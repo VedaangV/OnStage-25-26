@@ -47,5 +47,11 @@
           <li>Server implementation; receives WiFi communications and modifies LEDs accordingly</li>
         </ul>
     </ul>
-  <li>Cheese</li>
+  <li>plant_onstage</li>
+    <ul>
+      <li>plant_onstage.ino</li>
+        <ul>
+          <li>Server implementation to receive WiFi communication and shift plant stem up using rack/pinion mechanism</li>
+        </ul>
+    </ul>
 </ol>
