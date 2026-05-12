@@ -11,32 +11,37 @@
 # sudo apt-get update
 # sudo apt-get install pulseaudio-module-bluetooth
 
+### import libraries ###
 import pygame
-pygame.init()
 
-pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=4096) 
-pygame.mixer.music.set_volume(1.0)
+pygame.mixer.init()
+pygame.mixer.set_num_channels(8)
 
 channels = {
     "short_sfx": pygame.mixer.Channel(0),
-    "bg_sfx" : pygame.mixer.Channel(1),
-    "commentary_sfx" : pygame.mixer.Channel(2)
+    "bg_sfx": pygame.mixer.Channel(1),
+    "commentary_sfx": pygame.mixer.Channel(2)
 }
 
 audios = {
-    "mining": pygame.mixer.Sound("MINING.mp3")
+    "bg": pygame.mixer.Sound("BG_MUSIC.mp3"),
+    "mining": pygame.mixer.Sound("MINING.wav"),
+    #"watering": pygame.mixer.Sound("WATERING.mp3")
 }
 
-# play audio for ice
 def play_sound(channel, name):
-    _channel = channels[channel]
-    audio = audios[name]
-    _channel.play(audio)
+    if (channels[channel].get_busy()):
+        pygame.mixer.find_channel().play(audios[name])
+    else:
+        channels[channel].play(audios[name])
+  
+def play_bg():
+    channels["bg_sfx"].play(audios["bg"], loops=-1)
+    
+def play_mining():
+    play_sound("short_sfx", "mining")
 
-# testing
-# while True:
+### testing ###
+if __name__ == "__main__":
+    play_bg()
 
-#     _input = input()
-#     play_sound("short_sfx", "mining")
-
-pygame.quit()
