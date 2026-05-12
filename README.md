@@ -33,7 +33,7 @@
           <li>Management of audio channels to ensure no overlapping</li>
           <li>Pre-defined audio channels and audio filesn</li>
         </ul>
-      <li>(obsolete)Onstage_pfield.py</li>
+      <li>(obsolete) Onstage_pfield.py</li>
         <ul>
           <li>Implementation of potential field pathing</li>
           <li>Visualization of slope field</li>
@@ -52,6 +52,24 @@
       <li>plant_onstage.ino</li>
         <ul>
           <li>Server implementation to receive WiFi communication and shift plant stem up using rack/pinion mechanism</li>
+        </ul>
+    </ul>
+  <li>robot_onstage</li>
+    <ul>
+      <li>movement.cpp</li>
+        <ul>
+          <li>Inverse kinematics logic for converting velocity vector to omniwheel speeds</li>
+          <li>Digital control of three wheels</li>
+          <li>(obsolete) Encoder logic to implement PID controller to control wheel RPM</li>
+        </ul>
+      <li>movement.h</li>
+        <ul>
+          <li>Header file for movement.cpp</li>
+        </ul>
+      <li>robot_onstage.ino</li>
+        <ul>
+          <li>Server logic; receives information for movement vectors over WiFi</li>
+          <li>NeoPixel control logic to indicate water status</li>
         </ul>
     </ul>
 </ol>
