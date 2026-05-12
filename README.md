@@ -22,7 +22,7 @@
         <ul>
           <li>Wifi connection/disconnection and read/write</li>
         </ul>
-      <li>CBF</li>
+      <li>Onstage_CBF.py</li>
         <ul>
           <li>Helpers for computing whether or not a point is within a polygon and its distance to a given polygon boundary</li>
           <li>Control barrier function implementation - constraint creation and velocity calculation</li>
@@ -43,8 +43,8 @@
     <ul>
       <li>ice_onstage.ino</li>
         <ul>
-          <li>LED strip management logic</li>
-          <li>Server implementation; receives WiFi communications and changes LEDs accordingly</li>
+          <li>NeoPixel LED strip management logic</li>
+          <li>Server implementation; receives WiFi communications and modifies LEDs accordingly</li>
         </ul>
     </ul>
   <li>Cheese</li>
