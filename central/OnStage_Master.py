@@ -57,6 +57,11 @@ class robot:
         self.target = target
     def changeWater(self):
         self.haswater = not self.haswater
+        if ENABLE_WIFI:
+            if self.haswater:
+                wifi_write(self.sock, "water\n")
+            else:
+                wifi_write(self.sock, "plant\n")
     def atTarget(self):
         return (self.coords.distance_to(self.target) < DIST_THRESHOLD) #!tentative
 
@@ -87,9 +92,9 @@ class plant:
         self.tag = tag
     def grow(self):
         if (self.level < MAX_LEVEL):
-            self.level = self.level + 1
-#             if ENABLE_WIFI == True:
-#                 wifi_write(self.sock, "G")
+            self.level += 1
+            if ENABLE_WIFI == True:
+                wifi_write(self.sock, "G")
 
 class ice:
     tag: int
@@ -106,9 +111,9 @@ class ice:
         self.tag = tag
     def deplete(self):
         if (self.level > 0):
-            self.level = self.level - 1
-#             if ENABLE_WIFI == True:
-#                 wifi_write(self.sock, "D")
+            self.level -= 1
+            if ENABLE_WIFI == True:
+                wifi_write(self.sock, "D")
 
 robots = [robot("192.168.32.152", 5000, 0), robot("192.168.32.147", 5000, 5)]  
 anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
@@ -391,3 +396,4 @@ if __name__ == "__main__":
     
     cv2.destroyAllWindows()
     cam.stop()
+
