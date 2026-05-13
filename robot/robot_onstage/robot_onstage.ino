@@ -94,14 +94,19 @@ void loop() {
       if (client.available()) { // If there is data available to read
         char c = client.read(); // Read a character
         if (c == '\n') {
-          parseVelocity(inputBuffer);
-          Serial.println(vx);
-          Serial.println(vy);
-          Serial.println(r);
-          inputBuffer = "";
-          vmotor(vx, vy, r); 
-        } 
-        else {
+          if (inputBuffer == "water") {
+            growBalanced()
+          } else if (inputBuffer == "plant") {
+            depleteBalanced()
+          } else {
+            parseVelocity(inputBuffer);
+            Serial.println(vx);
+            Serial.println(vy);
+            Serial.println(r);
+            inputBuffer = "";
+            vmotor(vx, vy, r); 
+          }
+        } else {
           inputBuffer += c;
         }
       }
