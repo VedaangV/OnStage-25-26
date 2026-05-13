@@ -12,12 +12,12 @@ from OnStage_Rcoords import updTagPos, updObsPos, initAnchors
 from OnStage_WifiComms import wifi_connect, wifi_write, wifi_read, wifi_disconnect
 #from OnStage_pfield import pfield_path 
 from OnStage_CBF import CBFController, cbf_follow_path, cbf_stop_robot
-#from OnStage_Audio import play_sound
+from OnStage_Audio import *
 
 #print(cv2.getBuildInformation()) #check for gstreamer
 
 MAX_LEVEL = 4
-ENABLE_WIFI = True
+ENABLE_WIFI = False
 
 states = ["None", "Waiting", "Ice", "Plant"]
 
@@ -92,6 +92,7 @@ class plant:
         self.tag = tag
     def grow(self):
         if (self.level < MAX_LEVEL):
+            play_watering()
             self.level += 1
             if ENABLE_WIFI == True:
                 wifi_write(self.sock, "G")
@@ -111,6 +112,7 @@ class ice:
         self.tag = tag
     def deplete(self):
         if (self.level > 0):
+            play_mining()
             self.level -= 1
             if ENABLE_WIFI == True:
                 wifi_write(self.sock, "D")
@@ -269,6 +271,8 @@ def assignTargets(robots, icepatches, plants): # system = plants or ice
     
 ### main ###
 if __name__ == "__main__":
+    play_bg() ### start the background music
+    
     ### position camera ###
     while True:
         ret, frame = cam.read()
