@@ -26,7 +26,7 @@ channels = {
 audios = {
     "bg": pygame.mixer.Sound("BG_MUSIC.mp3"),
     "mining": pygame.mixer.Sound("MINING.wav"),
-    #"watering": pygame.mixer.Sound("WATERING.mp3")
+    "watering": pygame.mixer.Sound("WATERING.mp3")
 }
 
 def play_sound(channel, name):
@@ -40,6 +40,9 @@ def play_bg():
     
 def play_mining():
     play_sound("short_sfx", "mining")
+    
+def play_watering():
+    play_sound("short_sfx", "watering")
 
 ### testing ###
 if __name__ == "__main__":
