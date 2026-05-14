@@ -16,6 +16,7 @@ import pygame
 
 pygame.mixer.init()
 pygame.mixer.set_num_channels(8)
+pygame.mixer.music.set_volume(1.0)
 
 channels = {
     "short_sfx": pygame.mixer.Channel(0),
@@ -31,9 +32,9 @@ audios = {
 
 def play_sound(channel, name):
     if (channels[channel].get_busy()):
-        pygame.mixer.find_channel().play(audios[name])
+        pygame.mixer.find_channel().play(audios[name], maxtime=5000)
     else:
-        channels[channel].play(audios[name])
+        channels[channel].play(audios[name], maxtime=5000)
   
 def play_bg():
     channels["bg_sfx"].play(audios["bg"], loops=-1)
