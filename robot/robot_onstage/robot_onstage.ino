@@ -11,7 +11,7 @@
 
 // Which pin on the Arduino is connected to the NeoPixels?
 // On a Trinket or Gemma we suggest changing this to 1:
-#define LED_PIN     28
+#define LED_PIN     22
 
 // How many NeoPixels are attached to the Arduino?
 #define LED_COUNT  30
@@ -66,7 +66,9 @@ void setup() {
   Serial.println("WiFi connected");
   server.begin();
   digitalWrite(LED_BUILTIN, HIGH);
+  setWater(50);
   delay(500);
+
 
 }
 
@@ -94,12 +96,20 @@ void loop() {
       if (client.available()) { // If there is data available to read
         char c = client.read(); // Read a character
         if (c == '\n') {
+          if(inputBuffer.charAt(0) == 'd'){
+            depleteBalanced(5000);
+          }
+          else if (inputBuffer.charAt(0) == 'c'){
+            growBalanced(5000);
+          }
+          else{
           parseVelocity(inputBuffer);
           Serial.println(vx);
           Serial.println(vy);
           Serial.println(r);
           inputBuffer = "";
           vmotor(vx, vy, r); 
+          }
         } 
         else {
           inputBuffer += c;
