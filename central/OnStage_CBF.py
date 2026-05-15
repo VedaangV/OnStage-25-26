@@ -6,9 +6,9 @@ from OnStage_WifiComms import wifi_write
 # ---------------------------------------------------------------------------
 
 ROBOT_RADIUS     = 3.46   # 10*ft
-DIST_THRESHOLD   = 6      # arrival threshold (field units)
+DIST_THRESHOLD   = 7      # arrival threshold (field units)
 ENABLE_WIFI      = True  # sync with OnStage_Master.py
-baseV            = 7      # max speed (10*ft/s)
+baseV            = 8      # max speed (10*ft/s)
 
 PLOT_TYPE = "RADIUS_PLOT" # "RADIUS_PLOT" "BOUNDARY_PLOT"
 
@@ -260,11 +260,9 @@ def cbf_follow_path(cbf, robot, all_robots, obstacles):
     cbf_stop_robot), False while still en route.
     """
     if robot.coords.distance_to(robot.target.coords) < DIST_THRESHOLD:
-        robot.path = []
         return True
 
     Vx, Vy = cbf.compute_safe_velocity(robot, obstacles, all_robots)
-    robot.path = [[robot.target.coords.x, robot.target.coords.y]]
 
     if ENABLE_WIFI:
         wifi_write(robot.sock, f"vx: {Vx/10:.3f}, vy: {Vy/10:.3f}, r: {robot.rotation:.0f}\n")
@@ -277,7 +275,6 @@ def cbf_follow_path(cbf, robot, all_robots, obstacles):
 
 def cbf_stop_robot(robot):
     """Send zero-velocity command and clear path."""
-    robot.path = []
     if ENABLE_WIFI:
         wifi_write(robot.sock, "vx: 0, vy: 0, r: 0\n")
 
@@ -363,7 +360,7 @@ if __name__ == "__main__":
             return f"Point({self.x:.1f}, {self.y:.1f})"
 
     class SimRobot:
-        path = []; state = "None"; haswater = False; rotation = 0; sock = None
+        state = "None"; haswater = False; rotation = 0; sock = None
 
         def __init__(self, x, y, gx, gy, tag=0):
             self.tag    = tag
@@ -397,8 +394,9 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------ #
     # Simulation parameters                                               #
     # ------------------------------------------------------------------ #
-
-    SIM_FIELD       = 80
+    
+    f = 0.5
+    SIM_FIELD       = int(80*f)
     SIM_DT          = 0.05
     STEPS_PER_FRAME = 3
 
@@ -409,22 +407,22 @@ if __name__ == "__main__":
     def make_scenario(name):
         F = SIM_FIELD
         if name == "cross":
-            r = [SimRobot(10, 40, 70, 40, 0), SimRobot(70, 40, 10, 40, 1),
-                 SimRobot(40, 10, 40, 70, 2), SimRobot(40, 70, 40, 10, 3)]
+            r = [SimRobot(int(10*f), int(40*f), int(70*f), int(40*f), 0), SimRobot(int(70*f), int(40*f), int(10*f), int(40*f), 1),
+                 SimRobot(int(40*f), int(10*f), int(40*f), int(70*f), 2), SimRobot(int(40*f), int(70*f), int(40*f), int(10*f), 3)]
             o = []
 
         elif name == "cluttered":
-            r = [SimRobot(10, 20, 70, 60, 0), SimRobot(10, 60, 70, 20, 1)]
-            o = [SimObstacle(35, 40, 5), SimObstacle(45, 30, 4),
-                 SimObstacle(45, 50, 4), SimObstacle(55, 40, 5)]
+            r = [SimRobot(int(10*f), int(20*f), int(70*f), int(60*f), 0), SimRobot(int(10*f), int(60*f), int(70*f), int(20*f), 1)]
+            o = [SimObstacle(int(35*f), int(40*f), 5), SimObstacle(int(45*f), int(30*f), 4),
+                 SimObstacle(int(45*f), int(50*f), 4), SimObstacle(int(55*f), int(40*f), 5)]
             
         elif name == "onstage":
-            r = [SimRobot(10, 20, 70, 60, 0), SimRobot(10, 60, 70, 20, 1)]
-            o = [SimObstacle(35, 40, 5), SimObstacle(45, 30, 4),
-                 SimObstacle(45, 50, 4), SimObstacle(55, 40, 5)]
+            r = [SimRobot(int(10*f), int(20*f), int(70*f), int(60*f), 0), SimRobot(int(10*f), int(60*f), int(70*f), int(20*f), 1)]
+            o = [SimObstacle(int(35*f), int(40*f), 5), SimObstacle(int(45*f), int(30*f), 4),
+                 SimObstacle(int(45*f), int(50*f), 4), SimObstacle(int(55*f), int(40*f), 5)]
 
         elif name == "circle":
-            N, R = 5, 28
+            N, R = 5, int(28*f)
             cx, cy = F/2, F/2
             r = [SimRobot(cx + R*math.cos(2*math.pi*i/N),
                           cy + R*math.sin(2*math.pi*i/N),
@@ -435,12 +433,12 @@ if __name__ == "__main__":
 
         elif name == "polygon":
             # Two robots navigate around rectangular and triangular walls
-            r = [SimRobot(10, 20, 70, 60, 0)]
+            r = [SimRobot(int(10*f), int(20*f), int(70*f), int(60*f), 0)]
             o = [
                 # Rectangular wall in the centre
-                SimPolyObstacle([(42, 52), (58, 52), (58, 58), (42, 58)]),
+                SimPolyObstacle([(int(42*f), int(52*f)), (int(58*f), int(52*f)), (int(58*f), int(58*f)), (int(42*f), int(58*f))]),
                 # Triangle near bottom-right
-                SimPolyObstacle([(22, 42), (38, 42), (38, 38), (22, 38)]),
+                SimPolyObstacle([(int(28*f), int(42*f)), (int(38*f), int(42*f)), (int(38*f), int(20*f)), (int(28*f), int(20*f))]),
             ]
 
         else:
