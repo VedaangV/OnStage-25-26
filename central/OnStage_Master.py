@@ -10,9 +10,8 @@ from munkres import Munkres, print_matrix
 ### import subfiles ###
 from OnStage_Rcoords import updTagPos, updObsPos, initAnchors
 from OnStage_WifiComms import wifi_connect, wifi_write, wifi_read, wifi_disconnect
-#from OnStage_pfield import pfield_path 
 from OnStage_CBF import CBFController, cbf_follow_path, cbf_stop_robot
-#from OnStage_Audio import play_sound
+from OnStage_Audio import *
 
 #print(cv2.getBuildInformation()) #check for gstreamer
 
@@ -20,8 +19,6 @@ MAX_LEVEL = 4
 ENABLE_WIFI = True
 
 states = ["None", "Waiting", "Ice", "Plant"]
-
-# DIST_THRESHOLD = 2
 
 ### objects ###
 class Point:
@@ -55,8 +52,14 @@ class robot:
         self.tag = tag;
     def setTarget(self, target):
         self.target = target
-    def changeWater(self):
-        self.haswater = not self.haswater
+    def collectWater(self):
+        self.haswater = True
+#         if ENABLE_WIFI == True:
+#             wifi_write(self.sock, "collect")
+    def depleteWater(self):
+        self.haswater = False
+#         if ENABLE_WIFI == True:
+#             wifi_write(self.sock, "deplete")
     def atTarget(self):
         return (self.coords.distance_to(self.target) < DIST_THRESHOLD) #!tentative
 
@@ -87,9 +90,10 @@ class plant:
         self.tag = tag
     def grow(self):
         if (self.level < MAX_LEVEL):
-            self.level = self.level + 1
-#             if ENABLE_WIFI == True:
-#                 wifi_write(self.sock, "G")
+            play_watering()
+            self.level += 1
+            if ENABLE_WIFI == True:
+                wifi_write(self.sock, "G")
 
 class ice:
     tag: int
@@ -106,16 +110,17 @@ class ice:
         self.tag = tag
     def deplete(self):
         if (self.level > 0):
-            self.level = self.level - 1
-#             if ENABLE_WIFI == True:
-#                 wifi_write(self.sock, "D")
+            play_mining()
+            self.level -= 1
+            if ENABLE_WIFI == True:
+                wifi_write(self.sock, "D")
 
-robots = [robot("192.168.32.152", 5000, 0), robot("192.168.32.147", 5000, 5)]  
+robots = [robot("192.168.32.152", 5000, 0)]#, robot("192.168.32.147", 5000, 5)]  
 anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
 
 obstacles = [obstacle()]
-plants = [plant("192.168.32.209", 80, 7)]#[plant("192.168.32.209", 80, 4)]#[plant(WIFI_IP, 80, 4)]  #AT tag 4
-icepatches = [ice("192.168.32.118", 81, 4)]  
+plants = [plant("192.168.32.209", 80, 7)]#, plant("192.168.32.236", 80, _)]
+icepatches = [ice("192.168.32.118", 81, 4)]#, ice("192.168.32.233", 81, _)]  
 
 #obstacle_Lhsv = [0, 145, 200]    #color of obstacle (red)
 #obstacle_Uhsv = [15, 205, 255]
@@ -123,21 +128,21 @@ obstacle_Lhsv = [0, 0, 0]    #color of background (brown)
 obstacle_Uhsv = [55, 255, 255]
 
 
-field_width = 40  #ft  #scales x dimension of relative coordinates
-field_length = 40  #ft  #scales y dimension of relative coordinates
+field_width = 40  #ft*10  #scales x dimension of relative coordinates
+field_length = 40  #ft*10  #scales y dimension of relative coordinates
 # baseV = 100 #base velocity of robot, m/s
 
 ### CBF controller ###
 # gamma        : CBF aggressiveness — raise if robots get too close to obstacles/each other
 # k_att        : waypoint attraction strength
 # safety_margin: extra clearance in field units (on top of robot + obstacle radii)
-cbf = CBFController(gamma=1.5, k_att=2.25, safety_margin=1.25)
+cbf = CBFController(gamma=1.0, k_att=2.5, safety_margin=1.0)
 
 ### setup camera ###
 class VideoStream:
     def __init__(self):
         gst_pipeline = (
-            "souphttpsrc location=http://192.168.32.215:8080/video is-live=true ! "
+            "souphttpsrc location=http://192.168.32.214:8080/video is-live=true ! "
             "multipartdemux ! "
             "jpegdec ! "
             "videoconvert ! "
@@ -181,9 +186,10 @@ cam = VideoStream()
 def displayElements(img, anchors, robots, obstacles, field_size):
     for robot in robots:
         cv2.circle(img, (int(robot.coords.x / field_size * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.coords.y / field_size * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 7, (0, 100, 255), -1)
-        for i in range(len(robot.path)):
-            cv2.circle(img, (int(robot.path[i][0] / field_size * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.path[i][1] / field_size * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 3, (0, 255, 255), -1)
-        if hasattr(robot, "target"):
+        if hasattr(robot, "path"):
+            for i in range(len(robot.path)):
+                cv2.circle(img, (int(robot.path[i][0] / field_size * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.path[i][1] / field_size * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 3, (0, 255, 255), -1)
+        if hasattr(robot, "target") and hasattr(robot.target, "coords"):
             cv2.circle(img, (int(robot.target.coords.x / field_size * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.target.coords.y / field_size * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 5, (0, 255, 0), -1)
         
         for obs in obstacles:
@@ -264,6 +270,8 @@ def assignTargets(robots, icepatches, plants): # system = plants or ice
     
 ### main ###
 if __name__ == "__main__":
+    play_bg() ### start the background music
+    
     ### position camera ###
     while True:
         ret, frame = cam.read()
@@ -280,12 +288,12 @@ if __name__ == "__main__":
         for robot in robots:
             while (robot.sock == None or robot.sock == -1):
                 robot.sock = wifi_connect(robot.IP, robot.port)
-#         for plant in plants:
-#             while (plant.sock == None or plant.sock == -1):
-#                 plant.sock = wifi_connect(plant.IP, plant.port)
-#         for ice in icepatches:
-#             while (ice.sock == None or ice.sock == -1):
-#                 ice.sock = wifi_connect(ice.IP, ice.port)
+        for plant in plants:
+            while (plant.sock == None or plant.sock == -1):
+                plant.sock = wifi_connect(plant.IP, plant.port)
+        for ice in icepatches:
+            while (ice.sock == None or ice.sock == -1):
+                ice.sock = wifi_connect(ice.IP, ice.port)
     
     ### initialize tags/positions ###
     # anchors
@@ -337,6 +345,10 @@ if __name__ == "__main__":
                 obstacles.pop(idx)
                 break
     for idx, obs in enumerate(obstacles):
+        if obs.radius <= 1:
+            obstacles.pop(idx)
+            break
+    for idx, obs in enumerate(obstacles):
         for i in range(len(obs.border)):
             if (obs.border[i][0] < 0 or obs.border[i][0] > field_width or obs.border[i][1] < 0 or obs.border[i][1] > field_width):
                 obstacles.pop(idx)
@@ -367,14 +379,14 @@ if __name__ == "__main__":
                         robot.target.available = False
                     else:
                         robot.target.available = True
-                    robot.haswater = True
+                    robot.collectWater()
                 if (robot.state == "Plant"):
                     robot.target.grow()
                     if robot.target.level == MAX_LEVEL:
                         robot.target.available = False
                     else:
                         robot.target.available = True
-                    robot.haswater = False
+                    robot.depleteWater()
                 robot.state = "None"
                 robot.target = None
                 assignTargets(robots, icepatches, plants)

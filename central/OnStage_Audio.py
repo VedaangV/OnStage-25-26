@@ -15,22 +15,37 @@
 import pygame
 
 pygame.mixer.init()
-pygame.mixer.set_num_channels(4)
+pygame.mixer.set_num_channels(8)
+pygame.mixer.music.set_volume(1.0)
 
 channels = {
-  "short_sfx": pygame.mixer.Channel(0),
-  "bg_sfx": pygame.mixer.Channel(1),
-  "commentary_sfx": pygame.mixer.Channel(2)
+    "short_sfx": pygame.mixer.Channel(0),
+    "bg_sfx": pygame.mixer.Channel(1),
+    "commentary_sfx": pygame.mixer.Channel(2)
 }
 
 audios = {
-  "mining": pygame.mixer.Sound("MINING.mp3") 
-  "watering": pygame.mixer.Sound("WATERING.mp3")
+    "bg": pygame.mixer.Sound("BG_MUSIC.mp3"),
+    "mining": pygame.mixer.Sound("MINING.wav"),
+    "watering": pygame.mixer.Sound("WATERING.mp3")
 }
 
 def play_sound(channel, name):
-  channels[channel].play(audios[name])
+    if (channels[channel].get_busy()):
+        pygame.mixer.find_channel().play(audios[name], maxtime=5000)
+    else:
+        channels[channel].play(audios[name], maxtime=5000)
+  
+def play_bg():
+    channels["bg_sfx"].play(audios["bg"], loops=-1)
+    
+def play_mining():
+    play_sound("short_sfx", "mining")
+    
+def play_watering():
+    play_sound("short_sfx", "watering")
 
 ### testing ###
 if __name__ == "__main__":
-  play_sound("short_sfx", "mining")  # mining audio for ice collection
+    play_bg()
+

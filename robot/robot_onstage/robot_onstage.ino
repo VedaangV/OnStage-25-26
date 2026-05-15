@@ -96,6 +96,7 @@ void loop() {
       if (client.available()) { // If there is data available to read
         char c = client.read(); // Read a character
         if (c == '\n') {
+<<<<<<< HEAD
           if(inputBuffer.charAt(0) == 'd'){
             depleteBalanced(5000);
           }
@@ -112,6 +113,21 @@ void loop() {
           }
         } 
         else {
+=======
+          if (inputBuffer == "water") {
+            growBalanced()
+          } else if (inputBuffer == "plant") {
+            depleteBalanced()
+          } else {
+            parseVelocity(inputBuffer);
+            Serial.println(vx);
+            Serial.println(vy);
+            Serial.println(r);
+            inputBuffer = "";
+            vmotor(vx, vy, r); 
+          }
+        } else {
+>>>>>>> 9d7f950390092786b76ee4b87cb57eb67304df09
           inputBuffer += c;
         }
       }
