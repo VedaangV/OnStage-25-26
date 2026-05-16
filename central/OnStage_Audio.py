@@ -30,8 +30,6 @@ audios = {
     "watering": pygame.mixer.Sound("WATERING.mp3")
 }
 
-audios["bg"].set(0.2)
-
 def play_sound(channel, name):
     if (channels[channel].get_busy()):
         pygame.mixer.find_channel().play(audios[name], maxtime=5000)
@@ -50,4 +48,3 @@ def play_watering():
 ### testing ###
 if __name__ == "__main__":
     play_bg()
-
