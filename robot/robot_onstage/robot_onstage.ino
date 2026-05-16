@@ -68,7 +68,12 @@ void setup() {
   server.begin();
   digitalWrite(LED_BUILTIN, HIGH);
 
-  resetNPixel();
+  for(int i = 0; i < 3; i++) {
+    fillNPixel();
+    delay(750);
+    resetNPixel();
+    delay(750);
+  }
 }
 
 void loop() {
@@ -90,15 +95,17 @@ void loop() {
       if (client.available()) { // If there is data available to read
         char c = client.read(); // Read a character
         if (c == '\n') {
-          if(inputBuffer.charAt(0) == 'd'){
+          if(inputBuffer.indexOf("d") != -1){
+            inputBuffer = "";
             vmotor(0,0,0);
             depleteNPixel(1000);
-            inputBuffer = "";
+            delay(100);
           }
-          else if (inputBuffer.charAt(0) == 'c') {
+          else if (inputBuffer.indexOf("c") != -1) {
+            inputBuffer = "";
             vmotor(0,0,0);
             growNPixel(1000);
-            inputBuffer = "";
+            delay(100);
           }
           else {
             parseVelocity(inputBuffer);
@@ -145,6 +152,13 @@ void resetNPixel() {
   strip.show();
 }
 
+void fillNPixel() {
+  for(int i = 0; i < LED_COUNT; i++) {
+    strip.setPixelColor(i, strip.Color(0, 0, 255, 25));
+  }
+  strip.show();
+}
+
 void growNPixel(int ms){
   int tick = ms / LED_COUNT;
   resetNPixel();
@@ -153,9 +167,11 @@ void growNPixel(int ms){
     strip.show();
     delay(tick);
   } 
+  fillNPixel();
 }
 void depleteNPixel(int ms){
   int tick = ms / LED_COUNT;
+  fillNPixel();
   for(int i = 0; i < LED_COUNT; i++) {
     strip.setPixelColor(i, strip.Color(0, 0, 0, 0));
     strip.show();
