@@ -54,12 +54,12 @@ class robot:
         self.target = target
     def collectWater(self):
         self.haswater = True
-#         if ENABLE_WIFI == True:
-#             wifi_write(self.sock, "collect")
+        if ENABLE_WIFI == True:
+            wifi_write(self.sock, "collect")
     def depleteWater(self):
         self.haswater = False
-#         if ENABLE_WIFI == True:
-#             wifi_write(self.sock, "deplete")
+        if ENABLE_WIFI == True:
+            wifi_write(self.sock, "deplete")
     def atTarget(self):
         return (self.coords.distance_to(self.target) < DIST_THRESHOLD) #!tentative
 
@@ -128,15 +128,15 @@ obstacle_Lhsv = [0, 0, 0]    #color of background (brown)
 obstacle_Uhsv = [55, 255, 255]
 
 
-field_width = 40  #ft*10  #scales x dimension of relative coordinates
-field_length = 40  #ft*10  #scales y dimension of relative coordinates
+field_width = 70  #ft*10  #scales x dimension of relative coordinates
+field_length = 50  #ft*10  #scales y dimension of relative coordinates
 # baseV = 100 #base velocity of robot, m/s
 
 ### CBF controller ###
 # gamma        : CBF aggressiveness — raise if robots get too close to obstacles/each other
 # k_att        : waypoint attraction strength
 # safety_margin: extra clearance in field units (on top of robot + obstacle radii)
-cbf = CBFController(gamma=1.0, k_att=2.5, safety_margin=1.0)
+cbf = CBFController(gamma=1.0, k_att=2.5, safety_margin=2.5)
 
 ### setup camera ###
 class VideoStream:
@@ -183,22 +183,22 @@ class VideoStream:
         
 cam = VideoStream()
 
-def displayElements(img, anchors, robots, obstacles, field_size):
+def displayElements(img, anchors, robots, obstacles, field_width, field_length):
     for robot in robots:
-        cv2.circle(img, (int(robot.coords.x / field_size * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.coords.y / field_size * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 7, (0, 100, 255), -1)
+        cv2.circle(img, (int(robot.coords.x / field_width * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.coords.y / field_length * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 7, (0, 100, 255), -1)
         if hasattr(robot, "path"):
             for i in range(len(robot.path)):
-                cv2.circle(img, (int(robot.path[i][0] / field_size * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.path[i][1] / field_size * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 3, (0, 255, 255), -1)
+                cv2.circle(img, (int(robot.path[i][0] / field_width * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.path[i][1] / field_length * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 3, (0, 255, 255), -1)
         if hasattr(robot, "target") and hasattr(robot.target, "coords"):
-            cv2.circle(img, (int(robot.target.coords.x / field_size * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.target.coords.y / field_size * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 5, (0, 255, 0), -1)
+            cv2.circle(img, (int(robot.target.coords.x / field_width * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.target.coords.y / field_length * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 5, (0, 255, 0), -1)
         
         for obs in obstacles:
             pts = np.array(obs.border)
             for i in range(len(pts)):
-                pts[i][0] = pts[i][0] / field_size * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x
-                pts[i][1] = anchors[2].coords.y - pts[i][1] / field_size * (abs(anchors[0].coords.y - anchors[2].coords.y))
+                pts[i][0] = pts[i][0] / field_width * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x
+                pts[i][1] = anchors[2].coords.y - pts[i][1] / field_length * (abs(anchors[0].coords.y - anchors[2].coords.y))
             pts = pts.astype(np.int32)
-            cv2.polylines(img, [pts], isClosed=True, color=(0, 0, 255), thickness=1)
+            cv2.polylines(img, [pts], isClosed=True, color=(0, 0, 255), thickness=2)
     return img
     
 def assignTargets(robots, icepatches, plants): # system = plants or ice
@@ -307,7 +307,7 @@ if __name__ == "__main__":
             break
     
     # plants, ice, robots
-    while(res := updTagPos(cam, plants, anchors, field_width))[0] != 1:
+    while(res := updTagPos(cam, plants, anchors, field_width, field_length))[0] != 1:
         for plant in plants:
             print(f"Plant AT{plant.tag}: {plant.coords.x:.2f} {plant.coords.y:.2f}") #testing#
         print("")
@@ -315,7 +315,7 @@ if __name__ == "__main__":
         cv2.imshow("Testing", img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-    while(res := updTagPos(cam, icepatches, anchors, field_width))[0] != 1:
+    while(res := updTagPos(cam, icepatches, anchors, field_width, field_length))[0] != 1:
         for ice in icepatches:
             print(f"Ice AT{ice.tag}: {ice.coords.x:.2f} {ice.coords.y:.2f}")
         print("")
@@ -323,7 +323,7 @@ if __name__ == "__main__":
         cv2.imshow("Testing", img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-    while(res := updTagPos(cam, robots, anchors, field_width, True))[0] != 1:
+    while(res := updTagPos(cam, robots, anchors, field_width, field_length, True))[0] != 1:
         for robot in robots:
             print(f"Robot AT{robot.tag}: {robot.coords.x:.2f} {robot.coords.y:.2f}") #testing#
         print("")
@@ -333,7 +333,7 @@ if __name__ == "__main__":
             break
 
     # obstacles
-    while (res := updObsPos(cam, obstacles, obstacle_Lhsv, obstacle_Uhsv, anchors, field_width, True))[0] != 1:
+    while (res := updObsPos(cam, obstacles, obstacle_Lhsv, obstacle_Uhsv, anchors, field_width, field_length))[0] != 1:
         img = res[1]
         cv2.imshow("Testing", img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -367,7 +367,7 @@ if __name__ == "__main__":
     
     ### main loop ###
     while True:
-        err, img = updTagPos(cam, robots, anchors, field_width, True)
+        err, img = updTagPos(cam, robots, anchors, field_width, field_length, True)
         for robot in robots:
             if robot.state == "None" or robot.state == "Waiting":
                 cbf_stop_robot(robot)
@@ -396,7 +396,7 @@ if __name__ == "__main__":
                 continue
         
         if (err != -1):
-            img = displayElements(img, anchors, robots, obstacles, field_width)
+            img = displayElements(img, anchors, robots, obstacles, field_width, field_length)
             cv2.imshow("Testing", img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
