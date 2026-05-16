@@ -25,8 +25,6 @@ detector = apriltag.Detector(options)
 
 os.environ["OPENCV_LOG_LEVEL"] = "OFF"
 
-AREA_THRESHOLD = 5
-
 ### objects ###
 class Point:
     def __init__(self, x, y):
@@ -65,8 +63,8 @@ def apriltag_rot(result):
         deg = -deg
     return deg
     
-def convertPos(original_coords, anc_topleft, anc_topright, anc_bottomleft, field_size):
-    new_coords = Point(field_size*(abs(anc_topleft.x - original_coords.x) / abs(anc_topleft.x - anc_topright.x)), field_size*(abs(anc_bottomleft.y - original_coords.y) / abs(anc_topleft.y - anc_bottomleft.y)))
+def convertPos(original_coords, anc_topleft, anc_topright, anc_bottomleft, field_width, field_length):
+    new_coords = Point(field_width*(abs(anc_topleft.x - original_coords.x) / abs(anc_topleft.x - anc_topright.x)), field_length*(abs(anc_bottomleft.y - original_coords.y) / abs(anc_topleft.y - anc_bottomleft.y)))
     return new_coords
 
 def displayTags(results, img):
@@ -118,7 +116,7 @@ def initAnchors(cam, anchors):
         return 1, rgb
     return 0, rgb
     
-def updTagPos(cam, group, anchors, field_size, get_rotation = False):
+def updTagPos(cam, group, anchors, field_width, field_length, get_rotation = False):
     ### get image as RGB and GRAY ###
     ret, frame = cam.read()
     if not ret:
@@ -137,13 +135,13 @@ def updTagPos(cam, group, anchors, field_size, get_rotation = False):
             if (group[i].tag == r.tag_id):
                 tags_detected = tags_detected + 1
                 p = Point(r.center[0], r.center[1])
-                p = convertPos(p, anchors[0].coords, anchors[1].coords, anchors[2].coords, field_size)
-                if p.x > field_size:
-                    p.x = field_size
+                p = convertPos(p, anchors[0].coords, anchors[1].coords, anchors[2].coords, field_width, field_length)
+                if p.x > field_width:
+                    p.x = field_width
                 if p.x < 0:
                     p.x = 0
-                if p.y > field_size:
-                    p.y = field_size
+                if p.y > field_length:
+                    p.y = field_length
                 if p.y < 0:
                     p.y = 0
                 group[i].coords = p
@@ -156,40 +154,41 @@ def updTagPos(cam, group, anchors, field_size, get_rotation = False):
         return 1, rgb
     return 0, rgb
 
-canny_LOW = 50
-canny_HIGH = 100
-def updObsPos(cam, obstacles, Lhsv, Uhsv, anchors, field_size, background = False):
+AREA_MINIMUM = 1
+AREA_MAXIMUM = 10000
+def updObsPos(cam, obstacles, Lhsv, Uhsv, anchors, field_width, field_length):
     ### get image as RGB ###
     ret, frame = cam.read()
     if not ret:
         print("Failed to get camera frame")
         return -1
-    
+
     h, w, c = frame.shape
-    alpha = 1.3  #contrast
-    beta = -60  #brightness
-    frame = cv2.convertScaleAbs(frame, alpha=alpha, beta=beta) 
     
-    ### HSV filter ###
-    frame_HSV = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    frame_threshold = cv2.inRange(frame_HSV, (Lhsv[0], Lhsv[1], Lhsv[2]), (Uhsv[0], Uhsv[1], Uhsv[2]))
-    if background == True:
-        frame_threshold = cv2.bitwise_not(frame_threshold)
+    ### canny edge detection ###
+    frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    frame_gray_blurred = cv2.GaussianBlur(frame_gray, (3,3), 0)
+    frame_threshold = cv2.Canny(frame_gray, 160, 255) #160, 255
+    
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    frame_threshold = cv2.dilate(frame_threshold, kernel, iterations=1)
+    frame_threshold = cv2.morphologyEx(frame_threshold, cv2.MORPH_CLOSE, kernel)
     
     ### get contours ###
-    contours, hierarchy = cv2.findContours(frame_threshold, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv2.findContours(frame_threshold, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     contours = sorted(contours, key=cv2.contourArea, reverse=True)
-    
-    ctrs = np.zeros((h, w, 1), dtype=np.uint8)
-    ctrs = np.zeros((h, w, 1), dtype=np.uint8)
-    cv2.drawContours(ctrs, contours, -1, 255)
     
     ### filter based on area ###
     temp = []
     for idx in range(len(contours)):
-        if cv2.contourArea(contours[idx]) >= AREA_THRESHOLD:
+        if cv2.contourArea(contours[idx]) >= AREA_MINIMUM and cv2.contourArea(contours[idx]) < AREA_MAXIMUM:
             temp.append(contours[idx])
     contours = temp
+    
+    # image for displaying contours 
+    ctrs = np.zeros((h, w, 1), dtype=np.uint8)
+    ctrs = np.zeros((h, w, 1), dtype=np.uint8)
+    cv2.drawContours(ctrs, contours, -1, 255)
     
     obstacle_count = 0
     if (len(contours) == 0):
@@ -210,16 +209,16 @@ def updObsPos(cam, obstacles, Lhsv, Uhsv, anchors, field_size, background = Fals
         else:
             centroid = Point(0, 0)
             
-        centroid = convertPos(centroid, anchors[0].coords, anchors[1].coords, anchors[2].coords, field_size)
+        centroid = convertPos(centroid, anchors[0].coords, anchors[1].coords, anchors[2].coords, field_width, field_length)
         obstacles[obstacle_count].coords = centroid
         
         ### .radius = average of max and min dist from centoid along contour ###
         points = cnt.reshape(-1, 2)
-        minDist = field_size
+        minDist = field_width + field_length
         maxDist = 0
         for i in range(len(points)):
             point = Point(points[i][0], points[i][1])
-            point = convertPos(point, anchors[0].coords, anchors[1].coords, anchors[2].coords, field_size)
+            point = convertPos(point, anchors[0].coords, anchors[1].coords, anchors[2].coords, field_width, field_length)
             if (point.distance_to(centroid) < minDist):
                 minDist = point.distance_to(centroid)
             if (point.distance_to(centroid) > maxDist):
