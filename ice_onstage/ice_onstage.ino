@@ -42,7 +42,7 @@ void deplete() {
   num_active -= PIXEL_COUNT / levels;
   for(int i = 0; i < PIXEL_COUNT; i++) {
     if (i < num_active) {
-      ring.setPixelColor(i, ring.Color(0, 0, 255, 0));
+      ring.setPixelColor(i, ring.Color(0, 0, 125, 175));
     }
     else {
       ring.setPixelColor(i, ring.Color(0, 0, 0, 0));
@@ -53,8 +53,9 @@ void deplete() {
 }
 
 void loop() {
+  num_active = PIXEL_COUNT;
   for(int i = 0; i < PIXEL_COUNT; i++) {
-    ring.setPixelColor(i, ring.Color(0, 0, 255, 0));
+    ring.setPixelColor(i, ring.Color(0, 0, 125, 175));
   } 
   ring.show();
 
