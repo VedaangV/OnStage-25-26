@@ -1,7 +1,6 @@
 sudo apt update
 sudo apt install python3-pip
 
-sudo apt update
 sudo apt install python3-opencv libgstreamer1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good
 pip install munkres
 pip install pygame
