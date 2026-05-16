@@ -5,10 +5,11 @@ from OnStage_WifiComms import wifi_write
 # Tunable constants
 # ---------------------------------------------------------------------------
 
-ROBOT_RADIUS     = 3.46   # 10*ft
-DIST_THRESHOLD   = 7      # arrival threshold (field units)
+ROBOT_RADIUS     = 3.7   # 10*ft
+DIST_THRESHOLD   = 10      # arrival threshold (field units)
 ENABLE_WIFI      = True  # sync with OnStage_Master.py
-baseV            = 8      # max speed (10*ft/s)
+baseV            = 5      # max speed (10*ft/s)
+MIN_SPEED        = 5    # minimum speed (field units/s); prevents stalling at low velocities
 
 PLOT_TYPE = "RADIUS_PLOT" # "RADIUS_PLOT" "BOUNDARY_PLOT"
 
@@ -144,6 +145,14 @@ class CBFController:
         n = math.sqrt(vx*vx + vy*vy)
         return (vx*max_speed/n, vy*max_speed/n) if n > max_speed else (vx, vy)
 
+    @staticmethod
+    def _enforce_min_speed(vx, vy, min_speed):
+        """Scale velocity up to min_speed if the robot is moving but too slowly."""
+        n = math.sqrt(vx*vx + vy*vy)
+        if 0 < n < min_speed:
+            return vx * min_speed / n, vy * min_speed / n
+        return vx, vy
+
     def _nominal(self, robot):
         dx = robot.target.coords.x - robot.coords.x
         dy = robot.target.coords.y - robot.coords.y
@@ -244,6 +253,10 @@ class CBFController:
                 Vx = tx * escape_speed
                 Vy = ty * escape_speed
                 Vx, Vy = self._clip(Vx, Vy, baseV)
+
+        # Enforce minimum speed so the robot never crawls below MIN_SPEED
+        # (preserves the zero-velocity return at the arrival check above)
+        Vx, Vy = self._enforce_min_speed(Vx, Vy, MIN_SPEED)
 
         return Vx, Vy
 
