@@ -21,6 +21,7 @@
 
 // Declare our NeoPixel strip object:
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRBW + NEO_KHZ800);
+
 WiFiServer server(5000); // Listen on port 80
 const char* ssid = "StormingKids";
 const char* password = "todbot1234";
@@ -57,7 +58,7 @@ void setup() {
   // Attach interrupt to pin 2, rising edge
   attachInterrupt(digitalPinToInterrupt(encoderPinA), handleEncoder, RISING);
 
-   WiFi.begin(ssid, password);
+  WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -66,27 +67,20 @@ void setup() {
   Serial.println("WiFi connected");
   server.begin();
   digitalWrite(LED_BUILTIN, HIGH);
-  setWater(50);
-  delay(500);
 
-
+  resetNPixel();
 }
 
 void loop() {
 
-  // vmotor(0.4, 0, 0);
-  // delay(2000);
-  // vmotor(0, 0.4, 0);
-  // delay(1500);
-  // vmotor(0.4, 0.4, 0);
+  // Serial.println("Grow");
+  // growNPixel(1000);
+  // vmotor(4, 4, 0); 
   // delay(1000);
-
-  // motor(50, 0, 0);
-  // delay(1500);
-  // motor(0, 50, 0);
+  // Serial.println("Deplete");
+  // depleteNPixel(1000);
+  // vmotor(-4, -4, 0);
   // delay(1000);
-  // motor(0, 0, 50);
-  // delay(500);
 
   WiFiClient client = server.available(); // Check for a new client connection
   Serial.println(WiFi.localIP());
@@ -96,29 +90,17 @@ void loop() {
       if (client.available()) { // If there is data available to read
         char c = client.read(); // Read a character
         if (c == '\n') {
-<<<<<<< HEAD
           if(inputBuffer.charAt(0) == 'd'){
-            depleteBalanced(5000);
+            vmotor(0,0,0);
+            depleteNPixel(1000);
+            inputBuffer = "";
           }
-          else if (inputBuffer.charAt(0) == 'c'){
-            growBalanced(5000);
+          else if (inputBuffer.charAt(0) == 'c') {
+            vmotor(0,0,0);
+            growNPixel(1000);
+            inputBuffer = "";
           }
-          else{
-          parseVelocity(inputBuffer);
-          Serial.println(vx);
-          Serial.println(vy);
-          Serial.println(r);
-          inputBuffer = "";
-          vmotor(vx, vy, r); 
-          }
-        } 
-        else {
-=======
-          if (inputBuffer == "water") {
-            growBalanced()
-          } else if (inputBuffer == "plant") {
-            depleteBalanced()
-          } else {
+          else {
             parseVelocity(inputBuffer);
             Serial.println(vx);
             Serial.println(vy);
@@ -126,10 +108,10 @@ void loop() {
             inputBuffer = "";
             vmotor(vx, vy, r); 
           }
-        } else {
->>>>>>> 9d7f950390092786b76ee4b87cb57eb67304df09
+        } 
+        else {
           inputBuffer += c;
-        }
+        } 
       }
     }
     Serial.println("Client Disconnected.");
@@ -155,32 +137,29 @@ void parseVelocity(String data) {
   vy = vyStr.toFloat();
   r = rStr.toFloat();
 }
-void growBalanced(int ms){
-int time = ms/50;
-strip.clear();
-strip.show();
-for(int i = 1; i <= 50; i++){
-  setWater(i);
-  delay(time);
-}
 
-}
-void depleteBalanced(int ms){
-int time = ms/50;
-for(int i = 50; i >= 1; i--){
-  setWater(i);
-  delay(time);
-}
-}
-void setWater(int percent){
-  int num = percent/100.0 * LED_COUNT;
-  strip.clear();
-  int led = LED_COUNT/2;
-  for(int i = 0; i <= num/2; i++){
-    strip.setPixelColor(led, 0, 0, 255, 0);
-    strip.setPixelColor(LED_COUNT-led, 0, 0, 255, 0);
-    led += LED_COUNT/num;
+void resetNPixel() {
+  for(int i = 0; i < LED_COUNT; i++) {
+    strip.setPixelColor(i, strip.Color(0, 0, 0, 0));
   }
   strip.show();
-  
+}
+
+void growNPixel(int ms){
+  int tick = ms / LED_COUNT;
+  resetNPixel();
+  for(int i = 0; i < LED_COUNT; i++) {
+    strip.setPixelColor(i, strip.Color(0, 0, 255, 25));
+    strip.show();
+    delay(tick);
+  } 
+}
+void depleteNPixel(int ms){
+  int tick = ms / LED_COUNT;
+  for(int i = 0; i < LED_COUNT; i++) {
+    strip.setPixelColor(i, strip.Color(0, 0, 0, 0));
+    strip.show();
+    delay(tick);
+  } 
+  resetNPixel();
 }
