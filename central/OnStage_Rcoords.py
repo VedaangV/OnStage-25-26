@@ -154,7 +154,7 @@ def updTagPos(cam, group, anchors, field_width, field_length, get_rotation = Fal
         return 1, rgb
     return 0, rgb
 
-AREA_MINIMUM = 1
+AREA_MINIMUM = 5
 AREA_MAXIMUM = 10000
 def updObsPos(cam, obstacles, Lhsv, Uhsv, anchors, field_width, field_length):
     ### get image as RGB ###
