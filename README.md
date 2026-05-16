@@ -71,4 +71,9 @@
           <li>NeoPixel control logic to indicate water status</li>
         </ul>
     </ul>
+  <li>onstage_setup.sh</li>
+    <ul>
+      <li>Setup shell file for Jetson Orin Nano</li>
+    </ul>
+  <li>Miscellaneous testing files: HSV_test.py, Speaker.py</li>
 </ol>
