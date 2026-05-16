@@ -13,8 +13,6 @@ from OnStage_WifiComms import wifi_connect, wifi_write, wifi_read, wifi_disconne
 from OnStage_CBF import CBFController, cbf_follow_path, cbf_stop_robot
 from OnStage_Audio import *
 
-#print(cv2.getBuildInformation()) #check for gstreamer
-
 MAX_LEVEL = 4
 ENABLE_WIFI = True
 
@@ -115,22 +113,21 @@ class ice:
             if ENABLE_WIFI == True:
                 wifi_write(self.sock, "D")
 
-robots = [robot("192.168.32.152", 5000, 0)]#, robot("192.168.32.147", 5000, 5)]  
+###***** CLASS ARRAYS, CHANGE DEPENDING ON SETUP *****###
+robots = [robot("192.168.32.152", 5000, 0), robot("192.168.32.146", 5000, 5)]  
 anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
 
 obstacles = [obstacle()]
-plants = [plant("192.168.32.209", 80, 7)]#, plant("192.168.32.236", 80, _)]
-icepatches = [ice("192.168.32.118", 81, 4)]#, ice("192.168.32.233", 81, _)]  
+plants = [plant("192.168.32.209", 80, 7), plant("192.168.32.234", 80, 8)]
+icepatches = [ice("192.168.32.118", 81, 4), ice("192.168.32.171", 81, 6)]
+###***** *****####
 
-#obstacle_Lhsv = [0, 145, 200]    #color of obstacle (red)
-#obstacle_Uhsv = [15, 205, 255]
-obstacle_Lhsv = [0, 0, 0]    #color of background (brown)
+obstacle_Lhsv = [0, 0, 0]    #white
 obstacle_Uhsv = [55, 255, 255]
 
 
 field_width = 70  #ft*10  #scales x dimension of relative coordinates
 field_length = 50  #ft*10  #scales y dimension of relative coordinates
-# baseV = 100 #base velocity of robot, m/s
 
 ### CBF controller ###
 # gamma        : CBF aggressiveness — raise if robots get too close to obstacles/each other
@@ -256,7 +253,7 @@ def assignTargets(robots, icepatches, plants): # system = plants or ice
         
         m = Munkres()
         indexes = m.compute(matrix)
-        #print_matrix(matrix, msg='Lowest cost through this matrix:')
+        
         total = 0
         for row, column in indexes:
             print(f"working {row} {column}")
@@ -338,16 +335,15 @@ if __name__ == "__main__":
         cv2.imshow("Testing", img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-
-    for idx, obs in enumerate(obstacles):
-        for robot in robots:
-            if obs.coords.distance_to(robot.coords) < 2:
-                obstacles.pop(idx)
-                break
-    for idx, obs in enumerate(obstacles):
-        if obs.radius <= 1:
-            obstacles.pop(idx)
-            break
+    
+    i = 0
+    for r in robots:
+        i = 0
+        while (i < len(obstacles)):
+            if obstacles[i].coords.distance_to(r.coords) < 8:
+                obstacles.pop(i)
+            else:
+                i = i + 1
     for idx, obs in enumerate(obstacles):
         for i in range(len(obs.border)):
             if (obs.border[i][0] < 0 or obs.border[i][0] > field_width or obs.border[i][1] < 0 or obs.border[i][1] > field_width):
@@ -355,7 +351,7 @@ if __name__ == "__main__":
                 break
                 
     
-    time.sleep(1)
+    input("Press Enter to start: ")
     
     ### get path of points to target ###
     assignTargets(robots, icepatches, plants)
