@@ -2,7 +2,7 @@
 #include "movement.h"
 using namespace std;
 
-#define ROBOT_152 //#define ROBOT_143
+#define ROBOT_152
 
 //set motor pins
 #ifdef ROBOT_152
@@ -60,17 +60,14 @@ float degtorad(int degrees) {
 //function: set motor speeds based on velocity
 const float radius = 0.346; //ft
 const float ftsToSpeed = 157.65;
-const float Kd = 0;
+const float Kp = 1.0;
+const float Kd = 1.0;
 void vmotor(float Vx, float Vy, float rotation) {
   static float prev_rot;
-  
-  // int s1 = ftsToSpeed * (Vx*cos(degtorad(300)) + Vy*sin(degtorad(300)) + (radius * degtorad(rotation)) + (degtorad(rotation) - degtorad(prev_rot))*Kd); //right motor
-  // int s2 = ftsToSpeed * (Vx*cos(degtorad(60)) + Vy*sin(degtorad(60)) + (radius * degtorad(rotation)) + (degtorad(rotation) - degtorad(prev_rot))*Kd); //left motor
-  // int s3 = ftsToSpeed * (Vx*cos(degtorad(180)) + Vy*sin(degtorad(180)) + (radius * degtorad(rotation)) + (degtorad(rotation) - degtorad(prev_rot))*Kd); //back motor
 
-  int s1 = ftsToSpeed * (-Vx/2 - sqrt(3)*Vy/2 + radius * degtorad(rotation) + degtorad(prev_rot)*Kd);
-  int s2 = ftsToSpeed * (-Vx/2 + sqrt(3)*Vy/2 + radius * degtorad(rotation) + degtorad(prev_rot)*Kd);
-  int s3 = ftsToSpeed * (Vx + radius * degtorad(rotation) + degtorad(prev_rot)*Kd);
+  int s1 = ftsToSpeed * (-Vx/2 - sqrt(3)*Vy/2 + radius * degtorad(rotation)*Kp + radius*degtorad(rotation - prev_rot)*Kd); //right motor
+  int s2 = ftsToSpeed * (-Vx/2 + sqrt(3)*Vy/2 + radius * degtorad(rotation)*Kp + radius*degtorad(rotation - prev_rot)*Kd); //left motor
+  int s3 = ftsToSpeed * (Vx + radius * degtorad(rotation) + radius*degtorad(rotation - prev_rot)*Kd); //back motor
 
   Serial.print("Left motor: ");
   Serial.println(s1);
