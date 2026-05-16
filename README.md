@@ -75,5 +75,5 @@
     <ul>
       <li>Setup shell file for Jetson Orin Nano</li>
     </ul>
-  <li>Miscellaneous testing files: HSV_test.py, Speaker.py</li>
+  <li>Miscellaneous testing files: HSV_test.py, Canny_test.py</li>
 </ol>
