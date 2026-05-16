@@ -7,8 +7,8 @@ using namespace std;
 //set motor pins
 #ifdef ROBOT_152
   Motor Motor1{8, 9, A0}, Motor3{10, 11, A1}, Motor2{12, 13, A2}; //pico 2w .152
-#elif defined(ROBOT_147)
-  Motor Motor2{8, 9, A0}, Motor3{10, 11, A1}, Motor1{12, 13, A2}; //pico w .143
+#elif defined(ROBOT_146)
+  Motor Motor2{8, 9, A0}, Motor3{10, 11, A1}, Motor1{12, 13, A2}; //pico w .146
 #else
 #endif
 
