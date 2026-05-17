@@ -98,14 +98,14 @@ void loop() {
           if(inputBuffer.indexOf("d") != -1){
             inputBuffer = "";
             vmotor(0,0,0);
-            depleteNPixel(1000);
-            delay(100);
+            depleteNPixel(3000);
+            delay(2000);
           }
           else if (inputBuffer.indexOf("c") != -1) {
             inputBuffer = "";
             vmotor(0,0,0);
-            growNPixel(1000);
-            delay(100);
+            growNPixel(3000);
+            delay(2000);
           }
           else {
             parseVelocity(inputBuffer);
