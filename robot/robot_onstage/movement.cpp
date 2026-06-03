@@ -1,7 +1,10 @@
 //include files
 #include "movement.h"
+#include "common.h"
+
 using namespace std;
 
+//*** FIX ***//
 #define ROBOT_152
 
 //set motor pins
@@ -11,10 +14,9 @@ using namespace std;
   Motor Motor2{8, 9, A0}, Motor3{10, 11, A1}, Motor1{12, 13, A2}; //pico w .146
 #else
 #endif
+//******//
 
-const int encoderPinA = 3;
-const int encoderPinB = 2;
-volatile long encoderTicks = 0;
+#define CORRECT_ROT  //if defined, robot rotates to maintain 0 deg, else adjust formula and do not correct rotation
 
 //motor functions
 //motor mapping
@@ -40,13 +42,6 @@ void Motor::speed(int val) {
 
 //function: set motor speeds
 void motor(int speed1, int speed2, int speed3) {
-  // float fmults[] = {1.4, 1.2, 1};
-  // float bmults[] = {1.5, 1.5, 1};
-  
-  // Motor1.speed(speed1*((speed1>0) ? fmults[0] : bmults[0]));
-  // Motor2.speed(speed2*((speed2>0) ? fmults[1] : bmults[1]));
-  // Motor3.speed(speed3*((speed3>0) ? fmults[2] : bmults[2]));
-
   Motor1.speed(speed1);
   Motor2.speed(speed2);
   Motor3.speed(speed3);
@@ -61,13 +56,23 @@ float degtorad(int degrees) {
 const float radius = 0.346; //ft
 const float ftsToSpeed = 157.65;
 const float Kp = 1.0;
-const float Kd = 1.0;
-void vmotor(float Vx, float Vy, float rotation) {
-  static float prev_rot;
+const float Kd = 0.0;
+static float prev_rot;
+void vmotor(float Vx, float Vy) {
+  sensors_event_t event;
+  bno.getEvent(&event);
+  int rotation;
+  rotation = ((int) event.orientation.x);
 
+#ifdef CORRECT_ROT
   int s1 = ftsToSpeed * (-Vx/2 - sqrt(3)*Vy/2 + radius * degtorad(rotation)*Kp + radius*degtorad(rotation - prev_rot)*Kd); //right motor
   int s2 = ftsToSpeed * (-Vx/2 + sqrt(3)*Vy/2 + radius * degtorad(rotation)*Kp + radius*degtorad(rotation - prev_rot)*Kd); //left motor
-  int s3 = ftsToSpeed * (Vx + radius * degtorad(rotation) + radius*degtorad(rotation - prev_rot)*Kd); //back motor
+  int s3 = ftsToSpeed * (Vx + radius * degtorad(rotation)*Kp + radius*degtorad(rotation - prev_rot)*Kd); //back motor
+#else
+  int s1 = ftsToSpeed * (Vx*cos(degtorad(rotation+60)) + Vy*sin(degtorad(rotation+60)); //right motor
+  int s2 = ftsToSpeed * (Vx*cos(degtorad(rotation+300)) + Vy*sin(degtorad(rotation+300)); //left motor
+  int s3 = ftsToSpeed * (Vx*cos(degtorad(rotation+180)) + Vy*sin(degtorad(rotation+180)); //back motor
+#endif
 
   Serial.print("Left motor: ");
   Serial.println(s1);
@@ -79,37 +84,3 @@ void vmotor(float Vx, float Vy, float rotation) {
 
   prev_rot = rotation;
 }
-
-void handleEncoder() {
-  if (digitalRead(encoderPinB) == HIGH) {
-    encoderTicks++; // CW
-  } else {
-    encoderTicks--; // CCW
-  }
-}
-
-/*
-void moveRPM(Motor motor, float rpm, float kp, float ki, float kd){
-  if(rpm != motor.rpm){
-    motor.rpm = rpm;
-    motor.current_speed = rpm*2-20;
-    motor.integral = 0;
-    motor.last_error = 0;
-    motor.speed(current_speed);
-  }
-  long startTime = millis();
-  long startEnc = encoderTicks;
-  delay(100);
-  long endTime = millis();
-  long endEnc = encoderTicks;
-  float current = (float)(endEnc-startEnc)/(endTime-startTime) * 60000.0/960.0;
-  //Serial.print(current);
-  //Serial.print("    ");
-  //Serial.println(current_speed);
-  float error = current - rpm;
-  float deriv = error-motor.last_error;
-  motor.integral += error;
-  float adjust = error*motor.kp + motor.integral * motor.ki + deriv*motor.kd;
-  motor.current_speed -= adjust;
-  motor.speed(current_speed);
-}*/
