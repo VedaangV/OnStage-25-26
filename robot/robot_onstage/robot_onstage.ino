@@ -1,36 +1,20 @@
-//.h file include
+//file include
 #include "movement.h"
+#include "common.h"
 
 //libraries
 #include <Wire.h>
 #include <WiFi.h>
-#include <Adafruit_NeoPixel.h>
-#ifdef __AVR__
- #include <avr/power.h> // Required for 16 MHz Adafruit Trinket
-#endif
-
-// Which pin on the Arduino is connected to the NeoPixels?
-// On a Trinket or Gemma we suggest changing this to 1:
-#define LED_PIN     22
-
-// How many NeoPixels are attached to the Arduino?
-#define LED_COUNT  30
-
-// NeoPixel brightness, 0 (min) to 255 (max)
-#define BRIGHTNESS 50 // Set BRIGHTNESS to about 1/5 (max = 255)
-
-// Declare our NeoPixel strip object:
-Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRBW + NEO_KHZ800);
 
 WiFiServer server(5000); // Listen on port 80
-const char* ssid = "StormingKids";
+const char* ssid = "jetson";
 const char* password = "todbot1234";
 
 float vx = 0.0;
 float vy = 0.0;
 float r = 0.0;
 
-#define LED 21
+#define LED 21  //LED on Pico W to indicate Wifi connection
 String inputBuffer = "";
 void setup() {
   Serial.begin(115200);
@@ -53,10 +37,12 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
   delay(500);
-  pinMode(encoderPinA, INPUT_PULLUP);
-  pinMode(encoderPinB, INPUT_PULLUP);
-  // Attach interrupt to pin 2, rising edge
-  attachInterrupt(digitalPinToInterrupt(encoderPinA), handleEncoder, RISING);
+
+  if (!bno.begin(OPERATION_MODE_IMUPLUS)) {
+    Serial.println("IMU not working");
+    for (;;);
+  }
+  Serial.println("IMU working");
 
   WiFi.begin(ssid, password);
 
@@ -77,53 +63,53 @@ void setup() {
 }
 
 void loop() {
+  //***test motors***//
+  vmotor(4, 0); //right
+  delay(500);
+  vmotor(-4, 0); //left
+  delay(1000);
+  vmotor(0, 4); //up
+  delay(500);
+  vmotor(0, -4); //down
+  delay(1000);
 
-  // Serial.println("Grow");
-  // growNPixel(1000);
-  // vmotor(4, 4, 0); 
-  // delay(1000);
-  // Serial.println("Deplete");
-  // depleteNPixel(1000);
-  // vmotor(-4, -4, 0);
-  // delay(1000);
-
-  WiFiClient client = server.available(); // Check for a new client connection
-  Serial.println(WiFi.localIP());
-  if (client) {
-    Serial.println("\nNew Client Connected!");
-    while (client.connected()) { // While the client is connected
-      if (client.available()) { // If there is data available to read
-        char c = client.read(); // Read a character
-        if (c == '\n') {
-          if(inputBuffer.indexOf("d") != -1){
-            inputBuffer = "";
-            vmotor(0,0,0);
-            depleteNPixel(3000);
-            delay(2000);
-          }
-          else if (inputBuffer.indexOf("c") != -1) {
-            inputBuffer = "";
-            vmotor(0,0,0);
-            growNPixel(3000);
-            delay(2000);
-          }
-          else {
-            parseVelocity(inputBuffer);
-            Serial.println(vx);
-            Serial.println(vy);
-            Serial.println(r);
-            inputBuffer = "";
-            vmotor(vx, vy, r); 
-          }
-        } 
-        else {
-          inputBuffer += c;
-        } 
-      }
-    }
-    Serial.println("Client Disconnected.");
-    client.stop();
-  }
+  // WiFiClient client = server.available(); // Check for a new client connection
+  // Serial.println(WiFi.localIP());
+  // if (client) {
+  //   Serial.println("\nNew Client Connected!");
+  //   while (client.connected()) { // While the client is connected
+  //     if (client.available()) { // If there is data available to read
+  //       char c = client.read(); // Read a character
+  //       if (c == '\n') {
+  //         if(inputBuffer.indexOf("d") != -1){
+  //           inputBuffer = "";
+  //           vmotor(0,0,0);
+  //           depleteNPixel(3000);
+  //           delay(2000);
+  //         }
+  //         else if (inputBuffer.indexOf("c") != -1) {
+  //           inputBuffer = "";
+  //           vmotor(0,0,0);
+  //           growNPixel(3000);
+  //           delay(2000);
+  //         }
+  //         else {
+  //           parseVelocity(inputBuffer);
+  //           Serial.println(vx);
+  //           Serial.println(vy);
+  //           Serial.println(r);
+  //           inputBuffer = "";
+  //           vmotor(vx, vy, r); 
+  //         }
+  //       } 
+  //       else {
+  //         inputBuffer += c;
+  //       } 
+  //     }
+  //   }
+  //   Serial.println("Client Disconnected.");
+  //   client.stop();
+  // }
 }
 
 void parseVelocity(String data) {
@@ -143,39 +129,4 @@ void parseVelocity(String data) {
   vx = vxStr.toFloat();
   vy = vyStr.toFloat();
   r = rStr.toFloat();
-}
-
-void resetNPixel() {
-  for(int i = 0; i < LED_COUNT; i++) {
-    strip.setPixelColor(i, strip.Color(0, 0, 0, 0));
-  }
-  strip.show();
-}
-
-void fillNPixel() {
-  for(int i = 0; i < LED_COUNT; i++) {
-    strip.setPixelColor(i, strip.Color(0, 0, 255, 25));
-  }
-  strip.show();
-}
-
-void growNPixel(int ms){
-  int tick = ms / LED_COUNT;
-  resetNPixel();
-  for(int i = 0; i < LED_COUNT; i++) {
-    strip.setPixelColor(i, strip.Color(0, 0, 255, 25));
-    strip.show();
-    delay(tick);
-  } 
-  fillNPixel();
-}
-void depleteNPixel(int ms){
-  int tick = ms / LED_COUNT;
-  fillNPixel();
-  for(int i = 0; i < LED_COUNT; i++) {
-    strip.setPixelColor(i, strip.Color(0, 0, 0, 0));
-    strip.show();
-    delay(tick);
-  } 
-  resetNPixel();
 }
