@@ -23,5 +23,5 @@ extern const int encoderPinB; // Direction pin
 extern volatile long encoderTicks;
 
 void motor(int, int, int);
-void vmotor(float Vx, float Vy, float rotation);
+void vmotor(float, float);
 void handleEncoder();
