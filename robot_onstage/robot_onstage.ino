@@ -12,7 +12,6 @@ const char* password = "todbot1234";
 
 float vx = 0.0;
 float vy = 0.0;
-float r = 0.0;
 
 #define LED 21  //LED on Pico W to indicate Wifi connection
 String inputBuffer = "";
@@ -83,13 +82,13 @@ void loop() {
   //       if (c == '\n') {
   //         if(inputBuffer.indexOf("d") != -1){
   //           inputBuffer = "";
-  //           vmotor(0,0,0);
+  //           vmotor(0,0);
   //           depleteNPixel(3000);
   //           delay(2000);
   //         }
   //         else if (inputBuffer.indexOf("c") != -1) {
   //           inputBuffer = "";
-  //           vmotor(0,0,0);
+  //           vmotor(0,0);
   //           growNPixel(3000);
   //           delay(2000);
   //         }
@@ -99,7 +98,7 @@ void loop() {
   //           Serial.println(vy);
   //           Serial.println(r);
   //           inputBuffer = "";
-  //           vmotor(vx, vy, r); 
+  //           vmotor(vx, vy); 
   //         }
   //       } 
   //       else {
@@ -114,19 +113,14 @@ void loop() {
 
 void parseVelocity(String data) {
   int xpos = data.indexOf("x");
-  int ypos = data.indexOf("y");
-  int rpos  = data.indexOf("r");
-  if (xpos == -1 || ypos == -1 || rpos == -1) return;
+  if (xpos == -1 || ypos == -1) return;
 
   String vxStr = data.substring(data.indexOf("x:") + 3, ypos-3);
-  String vyStr = data.substring(data.indexOf("y:") + 3, rpos-2);
-  String rStr = data.substring(data.indexOf("r:") + 3, data.length());
+  String vyStr = data.substring(data.indexOf("y:") + 3, data.length());
 
   vxStr.trim();
   vyStr.trim();
-  rStr.trim();
 
   vx = vxStr.toFloat();
   vy = vyStr.toFloat();
-  r = rStr.toFloat();
 }
