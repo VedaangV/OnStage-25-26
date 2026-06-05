@@ -51,7 +51,7 @@ void vmotor(float Vx, float Vy) {
   bno.getEvent(&event);
   int rotation360;
   rotation360 = ((int) event.orientation.x);
-  int rotation180 = (rotation > 180) ? (rotation - 360) : rotation; 
+  int rotation180 = (rotation360 > 180) ? (rotation360 - 360) : rotation360; 
 
 #ifdef CORRECT_ROT
   int s1 = ftsToSpeed * (-Vx/2 - sqrt(3)*Vy/2 - radius * degtorad(rotation180)); //right motor
