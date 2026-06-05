@@ -23,6 +23,8 @@ void setup() {
   strip.begin();
   strip.show();
 
+  Wire.setSDA(0);
+  Wire.setSCL(1);
   Wire.setSDA(16);
   Wire.setSCL(17);
   Wire.begin();
@@ -91,7 +93,6 @@ void loop() {
             parseVelocity(inputBuffer);
             Serial.println(vx);
             Serial.println(vy);
-            Serial.println(r);
             inputBuffer = "";
             vmotor(vx, vy); 
           }
@@ -115,23 +116,31 @@ void loop() {
   // delay(1500);
 
   //test overall motor config
-  vmotor(0.5, 0); //right
-  delay(500);
+  for (int i = 0; i < 500; i++) {
+      vmotor(0.5, 0);
+      delay(1);
+  }
   vmotor(0, 0); 
   delay(2000);
   
-  vmotor(-0.5, 0); //left
-  delay(1000);
+  for (int i = 0; i < 500; i++) {
+      vmotor(-0.5, 0);
+      delay(1);
+  }
   vmotor(0, 0); 
   delay(2000);
   
-  vmotor(0, 0.5); //up
-  delay(1500);
+  for (int i = 0; i < 500; i++) {
+      vmotor(0, 0.5);
+      delay(1);
+  }
   vmotor(0, 0); 
   delay(2000);
   
-  vmotor(0, -0.5); //down
-  delay(2000);
+  for (int i = 0; i < 500; i++) {
+      vmotor(0, -0.5);
+      delay(1);
+  }
   vmotor(0, 0); 
   delay(2000);
 
@@ -140,6 +149,7 @@ void loop() {
 
 void parseVelocity(String data) {
   int xpos = data.indexOf("x");
+  int ypos = data.indexOf("y");
   if (xpos == -1 || ypos == -1) return;
 
   String vxStr = data.substring(data.indexOf("x:") + 3, ypos-3);
