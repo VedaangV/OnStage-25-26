@@ -6,7 +6,7 @@ from OnStage_WifiComms import wifi_write
 # ---------------------------------------------------------------------------
 
 ROBOT_RADIUS     = 3.7   # 10*ft
-DIST_THRESHOLD   = 10      # arrival threshold (field units)
+DIST_THRESHOLD   = 12      # arrival threshold (field units)
 ENABLE_WIFI      = True  # sync with OnStage_Master.py
 baseV            = 5      # max speed (10*ft/s)
 MIN_SPEED        = 5    # minimum speed (field units/s); prevents stalling at low velocities
@@ -278,7 +278,7 @@ def cbf_follow_path(cbf, robot, all_robots, obstacles):
     Vx, Vy = cbf.compute_safe_velocity(robot, obstacles, all_robots)
 
     if ENABLE_WIFI:
-        wifi_write(robot.sock, f"vx: {Vx/10:.3f}, vy: {Vy/10:.3f}, r: {robot.rotation:.0f}\n")
+        wifi_write(robot.sock, f"vx: {Vx/10:.3f}, vy: {Vy/10:.3f}\n")
     return False
 
 
@@ -289,7 +289,7 @@ def cbf_follow_path(cbf, robot, all_robots, obstacles):
 def cbf_stop_robot(robot):
     """Send zero-velocity command and clear path."""
     if ENABLE_WIFI:
-        wifi_write(robot.sock, "vx: 0, vy: 0, r: 0\n")
+        wifi_write(robot.sock, "vx: 0, vy: 0\n")
 
 
 # ===========================================================================
@@ -380,7 +380,6 @@ if __name__ == "__main__":
             self.IP     = ""; self.port = 0
             self.coords = Point(x, y)
             self.target = type("T", (), {"coords": Point(gx, gy)})()
-            self.path   = []
             self.trail  = [(x, y)]
 
         def move(self, vx, vy, dt):
