@@ -116,24 +116,24 @@ void loop() {
 
   //test overall motor config
   vmotor(0.5, 0); //right
-  delay(1000);
-  vmotor(0, 0); 
   delay(500);
+  vmotor(0, 0); 
+  delay(2000);
   
   vmotor(-0.5, 0); //left
-  delay(1500);
+  delay(1000);
   vmotor(0, 0); 
-  delay(500);
+  delay(2000);
   
   vmotor(0, 0.5); //up
-  delay(2000);
+  delay(1500);
   vmotor(0, 0); 
-  delay(500);
+  delay(2000);
   
   vmotor(0, -0.5); //down
-  delay(2500);
+  delay(2000);
   vmotor(0, 0); 
-  delay(500);
+  delay(2000);
 
 #endif
 }
