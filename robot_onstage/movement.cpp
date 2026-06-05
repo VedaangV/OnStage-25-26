@@ -4,19 +4,8 @@
 
 using namespace std;
 
-//*** FIX ***//
-#define ROBOT_152
-
-//set motor pins
-#ifdef ROBOT_152
-  //***FOLLOW THIS CONFIGURATION, THIS IS THE ROBOT WITH THE PICO 2W AND THE GREEN COVER ON THE TOP***//
-  Motor Motor1{8, 9, A0}, Motor3{10, 11, A1}, Motor2{12, 13, A2}; //pico 2w .152
-
-#elif defined(ROBOT_146)
-  Motor Motor2{8, 9, A0}, Motor3{10, 11, A1}, Motor1{12, 13, A2}; //pico w .146
-#else
-#endif
-//******//
+//define motor pins
+Motor Motor1{8, 9, A0}, Motor3{10, 11, A1}, Motor2{12, 13, A2}; 
 
 #define CORRECT_ROT  //if defined, robot rotates to maintain 0 deg, else adjust formula and do not correct rotation
 
