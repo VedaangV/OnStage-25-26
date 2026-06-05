@@ -46,23 +46,21 @@ float degtorad(int degrees) {
 //function: set motor speeds based on velocity
 const float radius = 0.346; //ft
 const float ftsToSpeed = 157.65;
-const float Kp = 1.0;
-const float Kd = 0.0;
-static float prev_rot;
 void vmotor(float Vx, float Vy) {
   sensors_event_t event;
   bno.getEvent(&event);
-  int rotation;
-  rotation = ((int) event.orientation.x);
+  int rotation360;
+  rotation360 = ((int) event.orientation.x);
+  int rotation180 = (rotation > 180) ? (rotation - 360) : rotation; 
 
 #ifdef CORRECT_ROT
-  int s1 = ftsToSpeed * (-Vx/2 - sqrt(3)*Vy/2 + radius * degtorad(rotation)*Kp + radius*degtorad(rotation - prev_rot)*Kd); //right motor
-  int s2 = ftsToSpeed * (-Vx/2 + sqrt(3)*Vy/2 + radius * degtorad(rotation)*Kp + radius*degtorad(rotation - prev_rot)*Kd); //left motor
-  int s3 = ftsToSpeed * (Vx + radius * degtorad(rotation)*Kp + radius*degtorad(rotation - prev_rot)*Kd); //back motor
+  int s1 = ftsToSpeed * (-Vx/2 - sqrt(3)*Vy/2 - radius * degtorad(rotation180)); //right motor
+  int s2 = ftsToSpeed * (-Vx/2 + sqrt(3)*Vy/2 - radius * degtorad(rotation180)); //left motor
+  int s3 = ftsToSpeed * (Vx - radius * degtorad(rotation180)); //back motor
 #else
-  int s1 = ftsToSpeed * (Vx*cos(degtorad(rotation+60)) + Vy*sin(degtorad(rotation+60)); //right motor
-  int s2 = ftsToSpeed * (Vx*cos(degtorad(rotation+300)) + Vy*sin(degtorad(rotation+300)); //left motor
-  int s3 = ftsToSpeed * (Vx*cos(degtorad(rotation+180)) + Vy*sin(degtorad(rotation+180)); //back motor
+  int s1 = ftsToSpeed * (Vx*cos(degtorad(rotation360+60)) + Vy*sin(degtorad(rotation360+60)); //right motor
+  int s2 = ftsToSpeed * (Vx*cos(degtorad(rotation360+300)) + Vy*sin(degtorad(rotation360+300)); //left motor
+  int s3 = ftsToSpeed * (Vx*cos(degtorad(rotation360+180)) + Vy*sin(degtorad(rotation360+180)); //back motor
 #endif
 
   Serial.print("Left motor: ");
@@ -72,6 +70,4 @@ void vmotor(float Vx, float Vy) {
   Serial.print("Back motor: ");
   Serial.println(s3);
   motor(s1, s2, s3);
-
-  prev_rot = rotation;
 }
