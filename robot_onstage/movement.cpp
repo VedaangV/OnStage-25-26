@@ -54,13 +54,13 @@ void vmotor(float Vx, float Vy) {
   int rotation180 = (rotation360 > 180) ? (rotation360 - 360) : rotation360; 
 
 #ifdef CORRECT_ROT
-  int s1 = ftsToSpeed * (-Vx/2 - sqrt(3)*Vy/2 - radius * degtorad(rotation180)); //right motor
-  int s2 = ftsToSpeed * (-Vx/2 + sqrt(3)*Vy/2 - radius * degtorad(rotation180)); //left motor
-  int s3 = ftsToSpeed * (Vx - radius * degtorad(rotation180)); //back motor
+  int s1 = ftsToSpeed * (-Vx/2 - sqrt(3)*Vy/2 + radius * degtorad(rotation180)); //right motor
+  int s2 = ftsToSpeed * (-Vx/2 + sqrt(3)*Vy/2 + radius * degtorad(rotation180)); //left motor
+  int s3 = ftsToSpeed * (Vx + radius * degtorad(rotation180)); //back motor
 #else
-  int s1 = ftsToSpeed * (Vx*cos(degtorad(rotation360+60)) + Vy*sin(degtorad(rotation360+60)); //right motor
-  int s2 = ftsToSpeed * (Vx*cos(degtorad(rotation360+300)) + Vy*sin(degtorad(rotation360+300)); //left motor
-  int s3 = ftsToSpeed * (Vx*cos(degtorad(rotation360+180)) + Vy*sin(degtorad(rotation360+180)); //back motor
+  int s1 = ftsToSpeed * (Vx*cos(degtorad(rotation360+60)) + Vy*sin(degtorad(rotation360+60))); //right motor
+  int s2 = ftsToSpeed * (Vx*cos(degtorad(rotation360+300)) + Vy*sin(degtorad(rotation360+300))); //left motor
+  int s3 = ftsToSpeed * (Vx*cos(degtorad(rotation360+180)) + Vy*sin(degtorad(rotation360+180))); //back motor
 #endif
 
   Serial.print("Left motor: ");
@@ -69,5 +69,7 @@ void vmotor(float Vx, float Vy) {
   Serial.println(s2);
   Serial.print("Back motor: ");
   Serial.println(s3);
+  Serial.print("Rotation: ");
+  Serial.println(rotation180);
   motor(s1, s2, s3);
 }
