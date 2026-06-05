@@ -62,15 +62,23 @@ void setup() {
 }
 
 void loop() {
-  //***test motors***//
-  vmotor(4, 0); //right
+  //***test individual motor config***//
+  motor(50, 0, 0);
   delay(500);
-  vmotor(-4, 0); //left
+  motor(0, 50, 0);
   delay(1000);
-  vmotor(0, 4); //up
-  delay(500);
-  vmotor(0, -4); //down
-  delay(1000);
+  motor(0, 0, 50);
+  delay(1500);
+
+  //***test overall motor config***//
+  // vmotor(4, 0); //right
+  // delay(500);
+  // vmotor(-4, 0); //left
+  // delay(1000);
+  // vmotor(0, 4); //up
+  // delay(500);
+  // vmotor(0, -4); //down
+  // delay(1000);
 
   // WiFiClient client = server.available(); // Check for a new client connection
   // Serial.println(WiFi.localIP());
