@@ -23,8 +23,8 @@ void setup() {
   strip.begin();
   strip.show();
 
-  Wire.setSDA(0);
-  Wire.setSCL(1);
+  Wire.setSDA(16);
+  Wire.setSCL(17);
   Wire.begin();
   pinMode(Motor1.fpin, OUTPUT);
   pinMode(Motor1.rpin, OUTPUT);
