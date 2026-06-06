@@ -5,11 +5,15 @@ Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRBW + NEO_KHZ800);
 
 int rotation = 0;
+int rotation_offset = 0;
+int raw = 0;
 void upd_rotation() {
   sensors_event_t event;
   bno.getEvent(&event);
-  rotation = ((int) event.orientation.x);
-  rotation = (rotation > 180) ? (rotation - 360) : rotation; 
+  raw = ((int) event.orientation.x);
+  raw = (raw > 180) ? (raw - 360) : raw; 
+  rotation = raw - rotation_offset;
+
 }
 
 void resetNPixel() {
