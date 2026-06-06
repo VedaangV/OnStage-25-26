@@ -7,8 +7,6 @@ using namespace std;
 //define motor pins
 Motor Motor1{8, 9, A0}, Motor3{10, 11, A1}, Motor2{12, 13, A2}; 
 
-#define CORRECT_ROT  //if defined, robot rotates to maintain 0 deg, else adjust formula and do not correct rotation
-
 //motor functions
 //motor mapping
 int cmap(int val, int olow, int ohigh, int mlow, int mhigh) {
@@ -47,21 +45,9 @@ float degtorad(int degrees) {
 const float radius = 0.346; //ft
 const float ftsToSpeed = 157.65;
 void vmotor(float Vx, float Vy) {
-  sensors_event_t event;
-  bno.getEvent(&event);
-  int rotation360;
-  rotation360 = ((int) event.orientation.x);
-  int rotation180 = (rotation360 > 180) ? (rotation360 - 360) : rotation360; 
-
-#ifdef CORRECT_ROT
-  int s1 = ftsToSpeed * (-Vx/2 - sqrt(3)*Vy/2 + radius * degtorad(rotation180)); //right motor
-  int s2 = ftsToSpeed * (-Vx/2 + sqrt(3)*Vy/2 + radius * degtorad(rotation180)); //left motor
-  int s3 = ftsToSpeed * (Vx + radius * degtorad(rotation180)); //back motor
-#else
-  int s1 = ftsToSpeed * (Vx*cos(degtorad(rotation360+60)) + Vy*sin(degtorad(rotation360+60))); //right motor
-  int s2 = ftsToSpeed * (Vx*cos(degtorad(rotation360+300)) + Vy*sin(degtorad(rotation360+300))); //left motor
-  int s3 = ftsToSpeed * (Vx*cos(degtorad(rotation360+180)) + Vy*sin(degtorad(rotation360+180))); //back motor
-#endif
+  int s1 = ftsToSpeed * (-Vx/2 - sqrt(3)*Vy/2 + radius * degtorad(rotation)); //right motor
+  int s2 = ftsToSpeed * (-Vx/2 + sqrt(3)*Vy/2 + radius * degtorad(rotation)); //left motor
+  int s3 = ftsToSpeed * (Vx + radius * degtorad(rotation)); //back motor
 
   Serial.print("Left motor: ");
   Serial.println(s1);
@@ -70,6 +56,6 @@ void vmotor(float Vx, float Vy) {
   Serial.print("Back motor: ");
   Serial.println(s3);
   Serial.print("Rotation: ");
-  Serial.println(rotation180);
+  Serial.println(rotation);
   motor(s1, s2, s3);
 }
