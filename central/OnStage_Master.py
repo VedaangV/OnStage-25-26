@@ -15,6 +15,7 @@ from OnStage_Audio import *
 
 MAX_LEVEL = 4
 ENABLE_WIFI = True
+MALFUNCTION_THRESH = 50
 
 states = ["None", "Waiting", "Ice", "Plant"]
 
@@ -42,6 +43,9 @@ class robot:
     state: str = "None"
     haswater: bool = False
     
+    #prev_coords: Point = Point(-1, -1)
+    #malf_counter: int = 0
+    
     def __init__(self, IP, port, tag):
         self.IP = IP;
         self.port = port
@@ -58,7 +62,15 @@ class robot:
             wifi_write(self.sock, "deplete")
     def atTarget(self):
         return (self.coords.distance_to(self.target) < DIST_THRESHOLD) #!tentative
-
+    #def malfunction(self):
+        #malf_counter += 1
+        #if (malf_counter > MALFUNCTION_THRESH):
+            #self.target = None
+            #self.state = "Malfunction"
+            #cbf_stop_robot(self)
+            #if ENABLE_WIFI == True:
+                #wifi_write(self.sock, "malfunction")
+    
 class anchor:
     tag: int
     coords: Point = Point(-1, -1)
@@ -112,12 +124,19 @@ class ice:
                 wifi_write(self.sock, "D")
 
 ###***** CLASS ARRAYS, CHANGE DEPENDING ON SETUP *****###
-robots = [robot("10.42.0.47", 5000, 0)]#robot("10.42.0.56", 5000, 5)]#robot("10.42.0.47", 5000, 0)]#, robot("192.168.32.146", 5000, 5)]  
+# robots = [robot("10.42.0.47", 5000, 0), robot("10.42.0.56", 5000, 5)]
+# anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
+# 
+# obstacles = [obstacle()]
+# plants = [plant("10.42.0.169", 80, 7), plant("10.42.0.140", 80, 8)]
+# icepatches = [ice("10.42.0.163", 81, 4), ice("10.42.0.61", 81, 6)]
+
+robots = [robot("192.168.32.152", 5000, 0), robot("192.168.32.147", 5000, 5)]
 anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
 
 obstacles = [obstacle()]
-plants = [plant("10.42.0.169", 80, 7), plant("10.42.0.140", 80, 8)]
-icepatches = [ice("10.42.0.163", 81, 4), ice("10.42.0.61", 81, 6)]
+plants = [plant("192.168.32.209", 80, 7), plant("192.168.32.232", 80, 8)]
+icepatches = [ice("192.168.32.118", 81, 4), ice("192.168.32.172", 81, 6)]
 ###***** *****####
 
 obstacle_Lhsv = [0, 0, 0]    #white
@@ -131,24 +150,24 @@ field_length = 50  #ft*10  #scales y dimension of relative coordinates
 # gamma        : CBF aggressiveness — raise if robots get too close to obstacles/each other
 # k_att        : waypoint attraction strength
 # safety_margin: extra clearance in field units (on top of robot + obstacle radii)
-cbf = CBFController(gamma=1.0, k_att=2.5, safety_margin=2.5)
+cbf = CBFController(gamma=0.7, k_att=2.5, safety_margin=2.0)
 
 ### setup camera ###
 class VideoStream:
     def __init__(self):
         ### phone IPcam ###
-#         gst_pipeline = (
-#             "souphttpsrc location=http://10.42.0.39:8080/video is-live=true ! "
-#             "multipartdemux ! "
-#             "jpegdec ! "
-#             "videoconvert ! "
-#             "video/x-raw, format=BGR ! "
-#             "appsink drop=true max-buffers=1 sync=false"
-#         )
-#         self.cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+        gst_pipeline = (
+            "souphttpsrc location=http://192.168.32.214:8080/video is-live=true ! "
+            "multipartdemux ! "
+            "jpegdec ! "
+            "videoconvert ! "
+            "video/x-raw, format=BGR ! "
+            "appsink drop=true max-buffers=1 sync=false"
+        )
+        self.cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
 
         ### USB webcam ###
-        self.cap = cv2.VideoCapture(0)
+#         self.cap = cv2.VideoCapture(0)
         
         if not self.cap.isOpened():
             print("Failed to open camera")
@@ -164,7 +183,7 @@ class VideoStream:
         while self.running:
             ret, frame = self.cap.read()
             # control Contrast 
-            alpha = 1
+            alpha = 1.0
             # control brightness
             beta = 0
             frame = cv2.convertScaleAbs(frame, alpha=alpha, beta=beta) 
@@ -279,7 +298,7 @@ if __name__ == "__main__":
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     cv2.destroyAllWindows()
-    
+     
     ### initialize wifi ###
     if ENABLE_WIFI == True:
         for robot in robots:
@@ -365,6 +384,10 @@ if __name__ == "__main__":
     while True:
         err, img = updTagPos(cam, robots, anchors, field_width, field_length)
         for robot in robots:
+            #if (err == 0 && (robot.prev_coords.distance_to(robot.coords) < 1)):
+                #robot.malfunction()
+            #robot.prev_coords = robot.coords
+                        
             if robot.state == "None" or robot.state == "Waiting":
                 cbf_stop_robot(robot)
             elif (cbf_follow_path(cbf, robot, robots, obstacles) == True):
@@ -386,7 +409,7 @@ if __name__ == "__main__":
                 robot.state = "None"
                 robot.target = None
                 assignTargets(robots, icepatches, plants)
-                if (robot.state != "None" and robot.state != "Waiting"):
+                if (robot.state == "Plant" or robot.state == "Ice"):
                     cbf_follow_path(cbf, robot, robots, obstacles)
             else:
                 continue
