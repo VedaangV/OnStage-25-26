@@ -1,52 +1,69 @@
-//file include
+//include files
+#include "movement.h"
 #include "common.h"
 
-Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
-Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRBW + NEO_KHZ800);
+using namespace std;
 
-int rotation = 0;
-int rotation_offset = 0;
-int raw = 0;
-void upd_rotation() {
-  sensors_event_t event;
-  bno.getEvent(&event);
-  raw = ((int) event.orientation.x);
-  raw = (raw > 180) ? (raw - 360) : raw; 
-  rotation = raw - rotation_offset;
+//define motor pins
+Motor Motor1{8, 9, A0}, Motor3{10, 11, A1}, Motor2{12, 13, A2}; 
 
+//motor functions
+//motor mapping
+int cmap(int val, int olow, int ohigh, int mlow, int mhigh) {
+  return constrain(map(val, olow, ohigh, mlow, mhigh), mlow, mhigh);
 }
 
-void resetNPixel() {
-  for(int i = 0; i < LED_COUNT; i++) {
-    strip.setPixelColor(i, strip.Color(0, 0, 0, 0));
+//motor speed
+void Motor::speed(int val) {
+  int map_speed = cmap(abs(val), 0, 100, 0, 255);
+
+  if (val > 0) {
+    digitalWrite(fpin, HIGH);
+    digitalWrite(rpin, LOW);
   }
-  strip.show();
-}
-
-void fillNPixel() {
-  for(int i = 0; i < LED_COUNT; i++) {
-    strip.setPixelColor(i, strip.Color(0, 0, 255, 25));
+  else {
+    digitalWrite(fpin, LOW);
+    digitalWrite(rpin, HIGH);
   }
-  strip.show();
+  analogWrite(control, map_speed);
+
 }
 
-void growNPixel(int ms){
-  int tick = ms / LED_COUNT;
-  resetNPixel();
-  for(int i = 0; i < LED_COUNT; i++) {
-    strip.setPixelColor(i, strip.Color(0, 0, 255, 25));
-    strip.show();
-    delay(tick);
-  } 
-  fillNPixel();
+//function: set motor speeds
+void motor(int speed1, int speed2, int speed3) {
+  Motor1.speed(speed1);
+  Motor2.speed(speed2);
+  Motor3.speed(speed3);
 }
-void depleteNPixel(int ms){
-  int tick = ms / LED_COUNT;
-  fillNPixel();
-  for(int i = 0; i < LED_COUNT; i++) {
-    strip.setPixelColor(i, strip.Color(0, 0, 0, 0));
-    strip.show();
-    delay(tick);
-  } 
-  resetNPixel();
+
+float degtorad(int degrees) {
+  float radians = degrees * PI / 180;
+  return radians;
+}
+
+//function: set motor speeds based on velocity
+const float radius = 0.346; //ft
+const float ftsToSpeed = 157.65;
+void vmotor(float Vx, float Vy) {
+  upd_rotation();
+  if (rotation > 90 || rotation < -90) {
+    fillNPixel();
+  }
+  else {
+    resetNPixel();
+  }
+  
+  int s1 = ftsToSpeed * (-Vx/2 - sqrt(3)*Vy/2 + radius * degtorad(rotation)); //right motor
+  int s2 = ftsToSpeed * (-Vx/2 + sqrt(3)*Vy/2 + radius * degtorad(rotation)); //left motor
+  int s3 = ftsToSpeed * (Vx + radius * degtorad(rotation)); //back motor
+
+  Serial.print("Left motor: ");
+  Serial.println(s1);
+  Serial.print("Right motor: ");
+  Serial.println(s2);
+  Serial.print("Back motor: ");
+  Serial.println(s3);
+  Serial.print("Rotation: ");
+  Serial.println(rotation);
+  motor(s1, s2, s3);
 }
