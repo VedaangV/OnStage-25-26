@@ -17,7 +17,11 @@
 extern Adafruit_BNO055 bno;
 extern Adafruit_NeoPixel strip;
 
+extern int rotation;
+
 //functions
+void upd_rotation();
+
 void resetNPixel();
 void fillNPixel();
 void growNPixel(int);
