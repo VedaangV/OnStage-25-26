@@ -55,6 +55,7 @@ void setup() {
   Serial.println("WiFi connected");
   server.begin();
   digitalWrite(LED_BUILTIN, HIGH);
+#else
 #endif
 
   for(int i = 0; i < 3; i++) {
@@ -63,6 +64,8 @@ void setup() {
     resetNPixel();
     delay(750);
   }
+  write8(BNO055_SYS_TRIGGER_ADDR, 0x20); 
+  delay(50); 
 }
 
 void loop() {
