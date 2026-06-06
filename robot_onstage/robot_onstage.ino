@@ -66,13 +66,13 @@ void setup() {
 }
 
 void loop() {
-  upd_rotation();
 #ifdef ENABLE_WIFI
   WiFiClient client = server.available(); // Check for a new client connection
   Serial.println(WiFi.localIP());
   if (client) {
     Serial.println("\nNew Client Connected!");
     while (client.connected()) { // While the client is connected
+      upd_rotation();
       if (client.available()) { // If there is data available to read
         char c = client.read(); // Read a character
         if (c == '\n') {
@@ -115,31 +115,23 @@ void loop() {
   // delay(1500);
 
   //test overall motor config
-  for (int i = 0; i < 500; i++) {
-      vmotor(0.5, 0);
-      delay(1);
-  }
+  vmotor(0.5, 0);
+  delay(500);
   vmotor(0, 0); 
   delay(2000);
   
-  for (int i = 0; i < 500; i++) {
-      vmotor(-0.5, 0);
-      delay(1);
-  }
+  vmotor(-0.5, 0);
+  delay(500);
   vmotor(0, 0); 
   delay(2000);
   
-  for (int i = 0; i < 500; i++) {
-      vmotor(0, 0.5);
-      delay(1);
-  }
+  vmotor(0, 0.5);
+  delay(500);
   vmotor(0, 0); 
   delay(2000);
   
-  for (int i = 0; i < 500; i++) {
-      vmotor(0, -0.5);
-      delay(1);
-  }
+  vmotor(0, -0.5);
+  delay(500);
   vmotor(0, 0); 
   delay(2000);
 
