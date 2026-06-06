@@ -18,10 +18,5 @@ extern Motor Motor1;
 extern Motor Motor2;
 extern Motor Motor3;
 
-extern const int encoderPinA; // Pin with interrupt
-extern const int encoderPinB; // Direction pin
-extern volatile long encoderTicks;
-
 void motor(int, int, int);
 void vmotor(float, float);
-void handleEncoder();
