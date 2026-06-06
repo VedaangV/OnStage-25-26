@@ -23,8 +23,6 @@ void setup() {
   strip.begin();
   strip.show();
 
-  Wire.setSDA(0);
-  Wire.setSCL(1);
   Wire.setSDA(16);
   Wire.setSCL(17);
   Wire.begin();
@@ -68,6 +66,7 @@ void setup() {
 }
 
 void loop() {
+  upd_rotation();
 #ifdef ENABLE_WIFI
   WiFiClient client = server.available(); // Check for a new client connection
   Serial.println(WiFi.localIP());
