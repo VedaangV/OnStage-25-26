@@ -46,6 +46,12 @@ const float radius = 0.346; //ft
 const float ftsToSpeed = 157.65;
 void vmotor(float Vx, float Vy) {
   upd_rotation();
+  if (rotation > 90 || rotation < -90) {
+    fillNPixel();
+  }
+  else {
+    resetNPixel();
+  }
   
   int s1 = ftsToSpeed * (-Vx/2 - sqrt(3)*Vy/2 + radius * degtorad(rotation)); //right motor
   int s2 = ftsToSpeed * (-Vx/2 + sqrt(3)*Vy/2 + radius * degtorad(rotation)); //left motor
