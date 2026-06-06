@@ -6,10 +6,10 @@ from OnStage_WifiComms import wifi_write
 # ---------------------------------------------------------------------------
 
 ROBOT_RADIUS     = 3.7   # 10*ft
-DIST_THRESHOLD   = 12      # arrival threshold (field units)
+DIST_THRESHOLD   = 8      # arrival threshold (field units)
 ENABLE_WIFI      = True  # sync with OnStage_Master.py
-baseV            = 5      # max speed (10*ft/s)
-MIN_SPEED        = 5    # minimum speed (field units/s); prevents stalling at low velocities
+baseV            = 4      # max speed (10*ft/s)
+MIN_SPEED        = 4    # minimum speed (field units/s); prevents stalling at low velocities
 
 PLOT_TYPE = "RADIUS_PLOT" # "RADIUS_PLOT" "BOUNDARY_PLOT"
 
@@ -231,29 +231,6 @@ class CBFController:
                 break
         Vx, Vy = self._clip(Vx, Vy, baseV)
 
-        # Anti-stall: if the robot is near a constraint boundary (h < margin)
-        # and the net velocity is near zero, inject a tangential perturbation
-        # so it can slide around the obstacle rather than freezing.
-        speed = math.sqrt(Vx*Vx + Vy*Vy)
-        if speed < baseV * 0.05:
-            # Find the most violated / tightest active constraint
-            worst_gx, worst_gy, worst_h = 0.0, 0.0, float("inf")
-            for h_val, gx, gy in cons:
-                if h_val < worst_h:
-                    worst_h, worst_gx, worst_gy = h_val, gx, gy
-            if worst_h < self.safety_margin:
-                # Tangent to the constraint gradient: rotate 90°
-                tx, ty = -worst_gy, worst_gx
-                # Choose the tangent direction that has positive dot with goal
-                dx_goal = robot.target.coords.x - robot.coords.x
-                dy_goal = robot.target.coords.y - robot.coords.y
-                if tx*dx_goal + ty*dy_goal < 0:
-                    tx, ty = -tx, -ty
-                escape_speed = min(self.k_att * baseV, baseV)
-                Vx = tx * escape_speed
-                Vy = ty * escape_speed
-                Vx, Vy = self._clip(Vx, Vy, baseV)
-
         # Enforce minimum speed so the robot never crawls below MIN_SPEED
         # (preserves the zero-velocity return at the arrival check above)
         Vx, Vy = self._enforce_min_speed(Vx, Vy, MIN_SPEED)
@@ -407,7 +384,7 @@ if __name__ == "__main__":
     # Simulation parameters                                               #
     # ------------------------------------------------------------------ #
     
-    f = 0.5
+    f = 0.75
     SIM_FIELD       = int(80*f)
     SIM_DT          = 0.05
     STEPS_PER_FRAME = 3
