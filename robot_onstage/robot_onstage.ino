@@ -55,7 +55,6 @@ void setup() {
   Serial.println("WiFi connected");
   server.begin();
   digitalWrite(LED_BUILTIN, HIGH);
-#else
 #endif
 
   for(int i = 0; i < 3; i++) {
@@ -64,8 +63,8 @@ void setup() {
     resetNPixel();
     delay(750);
   }
-  write8(BNO055_SYS_TRIGGER_ADDR, 0x20); 
-  delay(50); 
+  upd_rotation();
+  rotation_offset = rotation;
 }
 
 void loop() {
@@ -117,19 +116,9 @@ void loop() {
   // delay(1500);
 
   //test overall motor config
-  for (int i = 0; i < 2000; i++) {
-    vmotor(0.5, 0);
-    delay(1);
-  }
-  vmotor(0, 0); 
-  delay(2000);
 
-  for (int i = 0; i < 2000; i++) {
-    vmotor(-0.5, 0);
-    delay(1);
-  }
-  vmotor(0, 0); 
-  delay(2000);
+    vmotor(0.5, 0);
+  
 
 #endif
 }
