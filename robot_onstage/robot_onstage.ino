@@ -9,7 +9,7 @@
 //#define ENABLE_WIFI
 
 WiFiServer server(5000); 
-const char* ssid = "jetson";
+const char* ssid = "StormingKids";
 const char* password = "todbot1234";
 
 float vx = 0.0;
@@ -55,6 +55,7 @@ void setup() {
   Serial.println("WiFi connected");
   server.begin();
   digitalWrite(LED_BUILTIN, HIGH);
+#else
 #endif
 
   for(int i = 0; i < 3; i++) {
@@ -116,9 +117,30 @@ void loop() {
   // delay(1500);
 
   //test overall motor config
+  for (int i = 0; i < 1000; i++) {
+    vmotor(0.4, 0);
+    delay(1);
+  }
 
-    vmotor(0.5, 0);
-  
+  for (int i = 0; i < 1000; i++) {
+    vmotor(-0.4, 0);
+    delay(1);
+  }
+
+   for (int i = 0; i < 1000; i++) {
+    vmotor(0, 0.4);
+    delay(1);
+  }
+
+  for (int i = 0; i < 1000; i++) {
+    vmotor(0, -0.4);
+    delay(1);
+  }
+
+  for (int i = 0; i < 1000; i++) {
+    vmotor(0.4, 0.4);
+    delay(1);
+  }
 
 #endif
 }
