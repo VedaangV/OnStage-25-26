@@ -44,44 +44,49 @@ float degtorad(int degrees) {
 //function: set motor speeds based on velocity
 const float radius = 0.346; //ft
 const float ftsToSpeed = 157.65;
-static float prev_rot = 0.0;
-static float ie = 0.0;
 
-static float KP = 0.05;
-static float KD = 0.025;
-static float KI = 0.01;
-static float dt = 0.05; // we need to figure the timestep out - how often are we updating motor velocity
+const float Kp = 7.0;
+const float Ki = 0;
+const float Kd = 0;
 void vmotor(float Vx, float Vy) {
+  static int perror = 0;
+  static int Ierror = 0;
+
   upd_rotation();
-  if (rotation > 90 || rotation < -90) {
-    fillNPixel();
+
+  int rotChange;
+  if (rotation == 0) {
+    rotChange = 0;
+    Ierror = 0;
   }
   else {
-    resetNPixel();
+    rotChange = Kp*degtorad(rotation) + Kd*degtorad(rotation - perror) + Ki*degtorad(Ierror);  
   }
 
-  // PID loop
-  // We want rotation to be 0
-  float theta = degtorad(rotation);
+  int s1 = ftsToSpeed * (-Vx/2 - sqrt(3)*Vy/2 + rotChange); //right motor
+  int s2 = ftsToSpeed * (-Vx/2 + sqrt(3)*Vy/2 + rotChange); //left motor
+  int s3 = ftsToSpeed * (Vx + rotChange); //back motor
 
-  float e = theta;
-  float de = (theta - theta)/dt
-  ie += dt*(theta + de/2);
+  while(1) {
+    if ((s1 < 10 && s1 > 0) || (s2 < 10 && s2 > 0) || (s2 < 10 && s2 > 0)) {
+      s1 *= 1.5;
+      s2 *= 1.5;
+      s3 *= 1.5;
+    }
+    else {
+      break;
+    }
+  }
 
-  float PID_ROTATION_CORRECTION = radius*(KP*e+KD*de+KI*ie);
-  
-  int s1 = ftsToSpeed * (-Vx/2 - sqrt(3)*Vy/2 + PID_ROTATION_CORRECTION); //right motor
-  int s2 = ftsToSpeed * (-Vx/2 + sqrt(3)*Vy/2 + PID_ROTATION_CORRECTION); //left motor
-  int s3 = ftsToSpeed * (Vx + PID_ROTATION_CORRECTION); //back motor
-
-  Serial.print("Left motor: ");
-  Serial.println(s1);
-  Serial.print("Right motor: ");
-  Serial.println(s2);
-  Serial.print("Back motor: ");
-  Serial.println(s3);
+  // Serial.println(s1);
+  // Serial.println(s2);
+  // Serial.println(s3);
   Serial.print("Rotation: ");
   Serial.println(rotation);
+  Serial.print("RotChange: ");
+  Serial.println(rotChange);
   motor(s1, s2, s3);
-  prev_rot = rot_rad;
+
+  perror = rotation;
+  Ierror += rotation;
 }
