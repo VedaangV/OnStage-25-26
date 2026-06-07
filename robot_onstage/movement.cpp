@@ -44,6 +44,13 @@ float degtorad(int degrees) {
 //function: set motor speeds based on velocity
 const float radius = 0.346; //ft
 const float ftsToSpeed = 157.65;
+static float prev_rot = 0.0;
+static float ie = 0.0;
+
+static float KP = 0.05;
+static float KD = 0.025;
+static float KI = 0.01;
+static float dt = 0.05; // we need to figure the timestep out - how often are we updating motor velocity
 void vmotor(float Vx, float Vy) {
   upd_rotation();
   if (rotation > 90 || rotation < -90) {
@@ -52,10 +59,20 @@ void vmotor(float Vx, float Vy) {
   else {
     resetNPixel();
   }
+
+  // PID loop
+  // We want rotation to be 0
+  float theta = degtorad(rotation);
+
+  float e = theta;
+  float de = (theta - theta)/dt
+  ie += dt*(theta + de/2);
+
+  float PID_ROTATION_CORRECTION = radius*(KP*e+KD*de+KI*ie);
   
-  int s1 = ftsToSpeed * (-Vx/2 - sqrt(3)*Vy/2 + radius * degtorad(rotation)); //right motor
-  int s2 = ftsToSpeed * (-Vx/2 + sqrt(3)*Vy/2 + radius * degtorad(rotation)); //left motor
-  int s3 = ftsToSpeed * (Vx + radius * degtorad(rotation)); //back motor
+  int s1 = ftsToSpeed * (-Vx/2 - sqrt(3)*Vy/2 + PID_ROTATION_CORRECTION); //right motor
+  int s2 = ftsToSpeed * (-Vx/2 + sqrt(3)*Vy/2 + PID_ROTATION_CORRECTION); //left motor
+  int s3 = ftsToSpeed * (Vx + PID_ROTATION_CORRECTION); //back motor
 
   Serial.print("Left motor: ");
   Serial.println(s1);
@@ -66,4 +83,5 @@ void vmotor(float Vx, float Vy) {
   Serial.print("Rotation: ");
   Serial.println(rotation);
   motor(s1, s2, s3);
+  prev_rot = rot_rad;
 }
