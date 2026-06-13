@@ -1,3 +1,7 @@
+//include guards
+#ifndef COMMON_H
+#define COMMON_H
+
 //libraries
 #include <Arduino.h>
 #include <Adafruit_BNO055.h>
@@ -20,10 +24,21 @@ extern Adafruit_NeoPixel strip;
 extern int rotation;
 extern int rotation_offset;
 
+inline uint32_t ICEBLUE = strip.Color(0, 0, 255, 25);
+inline uint32_t WHITE = strip.Color(0, 0, 0, 255);
+inline uint32_t RED = strip.Color(255, 0, 0, 0);
+inline uint32_t GREEN = strip.Color(0, 255, 0, 0);
+inline uint32_t BLUE = strip.Color(0, 0, 255, 0);
+inline uint32_t YELLOW = strip.Color(255, 255, 0, 0);
+inline uint32_t CYAN = strip.Color(0, 255, 255, 0);
+inline uint32_t MAGENTA = strip.Color(255, 0, 255, 0);
+
 //functions
 void upd_rotation();
 
 void resetNPixel();
-void fillNPixel();
-void growNPixel(int);
-void depleteNPixel(int);
+void fillNPixel(uint32_t color, int count = LED_COUNT);
+void growNPixel(int ms, uint32_t color, int count = LED_COUNT);
+void depleteNPixel(int ms, uint32_t color, int count = LED_COUNT);
+
+#endif
