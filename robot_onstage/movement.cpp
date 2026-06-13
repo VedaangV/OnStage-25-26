@@ -5,7 +5,20 @@
 using namespace std;
 
 //define motor pins
-Motor Motor1{8, 9, A0}, Motor3{10, 11, A1}, Motor2{12, 13, A2}; 
+Motor Motor1{8, 9}, Motor2{12, 13}, Motor3{10, 11};
+
+//encoders
+const uint8_t direction_pin = 18;
+const uint8_t encoder_pin = 19;
+volatile int64_t encoders = 0;
+void enc_update() {
+  if (digitalRead(direction_pin) == HIGH) {
+    encoders++;
+  }
+  else {
+    encoders--;
+  }
+}
 
 //motor functions
 //motor mapping
@@ -18,15 +31,13 @@ void Motor::speed(int val) {
   int map_speed = cmap(abs(val), 0, 100, 0, 255);
 
   if (val > 0) {
-    digitalWrite(fpin, HIGH);
-    digitalWrite(rpin, LOW);
+    analogWrite(fpin, map_speed);
+    analogWrite(rpin, 0);
   }
   else {
-    digitalWrite(fpin, LOW);
-    digitalWrite(rpin, HIGH);
+    analogWrite(fpin, 0);
+    analogWrite(rpin, map_speed);
   }
-  analogWrite(control, map_speed);
-
 }
 
 //function: set motor speeds
@@ -43,7 +54,7 @@ float degtorad(int degrees) {
 
 //function: set motor speeds based on velocity
 const float radius = 0.346; //ft
-const float ftsToSpeed = 157.65;
+const float ftsToSpeed = 157.65; //ft per sec to motor speed
 
 const float Kp = 7.0;
 const float Ki = 0;
@@ -67,24 +78,12 @@ void vmotor(float Vx, float Vy) {
   int s2 = ftsToSpeed * (-Vx/2 + sqrt(3)*Vy/2 + rotChange); //left motor
   int s3 = ftsToSpeed * (Vx + rotChange); //back motor
 
-  while(1) {
-    if ((s1 < 10 && s1 > 0) || (s2 < 10 && s2 > 0) || (s2 < 10 && s2 > 0)) {
-      s1 *= 1.5;
-      s2 *= 1.5;
-      s3 *= 1.5;
-    }
-    else {
-      break;
-    }
-  }
-
-  // Serial.println(s1);
-  // Serial.println(s2);
-  // Serial.println(s3);
-  Serial.print("Rotation: ");
+  Serial.println(s1);
+  Serial.println(s2);
+  Serial.println(s3);
   Serial.println(rotation);
-  Serial.print("RotChange: ");
   Serial.println(rotChange);
+
   motor(s1, s2, s3);
 
   perror = rotation;
