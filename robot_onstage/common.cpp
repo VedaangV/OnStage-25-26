@@ -13,7 +13,6 @@ void upd_rotation() {
   raw = ((int) event.orientation.x);
   raw = (raw > 180) ? (raw - 360) : raw; 
   rotation = raw - rotation_offset;
-
 }
 
 void resetNPixel() {
@@ -23,27 +22,27 @@ void resetNPixel() {
   strip.show();
 }
 
-void fillNPixel() {
-  for(int i = 0; i < LED_COUNT; i++) {
+void fillNPixel(uint32_t color, int count) {
+  for(int i = 0; i < count; i++) {
     strip.setPixelColor(i, strip.Color(0, 0, 255, 25));
   }
   strip.show();
 }
 
-void growNPixel(int ms){
-  int tick = ms / LED_COUNT;
+void growNPixel(int ms, uint32_t color, int count){
+  int tick = ms / count;
   resetNPixel();
-  for(int i = 0; i < LED_COUNT; i++) {
+  for(int i = 0; i < count; i++) {
     strip.setPixelColor(i, strip.Color(0, 0, 255, 25));
     strip.show();
     delay(tick);
   } 
-  fillNPixel();
+  fillNPixel(count);
 }
-void depleteNPixel(int ms){
-  int tick = ms / LED_COUNT;
-  fillNPixel();
-  for(int i = 0; i < LED_COUNT; i++) {
+void depleteNPixel(int ms, uint32_t color, int count){
+  int tick = ms / count;
+  fillNPixel(count);
+  for(int i = 0; i < count; i++) {
     strip.setPixelColor(i, strip.Color(0, 0, 0, 0));
     strip.show();
     delay(tick);
