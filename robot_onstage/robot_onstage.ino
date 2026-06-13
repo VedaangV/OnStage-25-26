@@ -6,7 +6,7 @@
 #include <Wire.h>
 #include <WiFi.h>
 
-//#define ENABLE_WIFI
+#define ENABLE_WIFI
 
 WiFiServer server(5000); 
 const char* ssid = "StormingKids";
@@ -18,33 +18,41 @@ float vy = 0.0;
 #define LED 21  //LED on Pico W to indicate Wifi connection
 String inputBuffer = "";
 void setup() {
+  //Serial
   Serial.begin(115200);
-  delay(1000);  
+  delay(2500);
+
+  //Neopixel
   strip.begin();
   strip.show();
 
+  //Wire
   Wire.setSDA(16);
   Wire.setSCL(17);
   Wire.begin();
-  pinMode(Motor1.fpin, OUTPUT);
-  pinMode(Motor1.rpin, OUTPUT);
-  pinMode(Motor1.control, OUTPUT);
-  pinMode(Motor2.fpin, OUTPUT);
-  pinMode(Motor2.rpin, OUTPUT);
-  pinMode(Motor2.control, OUTPUT);
-  pinMode(Motor3.fpin, OUTPUT);
-  pinMode(Motor3.rpin, OUTPUT);
-  pinMode(Motor3.control, OUTPUT);
+  
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
+
+  pinMode(direction_pin, INPUT);
+  pinMode(encoder_pin, INPUT);
+  attachInterrupt(encoder_pin, enc_update, RISING);
+
   delay(500);
 
+  //IMU BNO055
   if (!bno.begin(OPERATION_MODE_IMUPLUS)) {
     Serial.println("IMU not working");
-    for (;;);
+    for (;;){
+      digitalWrite(LED_BUILTIN, HIGH);
+      delay(200);
+      digitalWrite(LED_BUILTIN, LOW);
+      delay(200);
+    }
   }
   Serial.println("IMU working");
-
+  
+  //Wifi communication
 #ifdef ENABLE_WIFI
   WiFi.begin(ssid, password);
 
@@ -58,14 +66,19 @@ void setup() {
 #else
 #endif
 
+  //get IMU initial value
+  upd_rotation();
+  rotation_offset = rotation;
+  //reset encoders
+  encoders = 0;
+
+  //START indicator
   for(int i = 0; i < 3; i++) {
-    fillNPixel();
+    fillNPixel(WHITE);
     delay(750);
     resetNPixel();
     delay(750);
-  }
-  upd_rotation();
-  rotation_offset = rotation;
+  } 
 }
 
 void loop() {
@@ -81,13 +94,12 @@ void loop() {
           if(inputBuffer.indexOf("d") != -1){
             inputBuffer = "";
             vmotor(0,0);
-            depleteNPixel(3000);
-            delay(2000);
+            depleteNPixel(3000, ICEBLUE);
           }
           else if (inputBuffer.indexOf("c") != -1) {
             inputBuffer = "";
             vmotor(0,0);
-            growNPixel(3000);
+            growNPixel(3000, ICEBLUE);
             delay(2000);
           }
           else {
@@ -107,14 +119,22 @@ void loop() {
     client.stop();
   }
 #else
+
   //*** TESTING ***//
   //test individual motor config
-  // motor(50, 0, 0);
-  // delay(500);
-  // motor(0, 50, 0);
-  // delay(1000);
-  // motor(0, 0, 50);
-  // delay(1500);
+  // motor(30, 0, 0);
+  // delay(750);
+  // motor(0, 30, 0);
+  // delay(750);
+  // motor(0, 0, 30);
+  // delay(750);
+
+  // motor(0, 0, -30);
+  // delay(750);
+  // motor(0, -30, 0);
+  // delay(750);
+  // motor(-30, 0, 0);
+  // delay(750);
 
   //test overall motor config
   for (int i = 0; i < 1000; i++) {
@@ -139,6 +159,11 @@ void loop() {
 
   for (int i = 0; i < 1000; i++) {
     vmotor(0.4, 0.4);
+    delay(1);
+  }
+
+  for (int i = 0; i < 1000; i++) {
+    vmotor(-0.4, -0.4);
     delay(1);
   }
 
