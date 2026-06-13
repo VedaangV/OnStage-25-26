@@ -3,6 +3,12 @@
 #include <cmath>
 #include <numbers>
 
+//encoders
+extern const uint8_t direction_pin;
+extern const uint8_t encoder_pin;
+extern volatile int64_t encoders;
+void enc_update();
+
 //motor init prototypes
 int cmap(int);
 void speed(int);
@@ -11,12 +17,12 @@ void speed(int);
 struct Motor {
   uint8_t fpin;
   uint8_t rpin;
-  uint8_t control;
   void speed(int val);
 };
 extern Motor Motor1;
 extern Motor Motor2;
 extern Motor Motor3;
 
+//movement functions
 void motor(int, int, int);
 void vmotor(float, float);
