@@ -56,36 +56,56 @@ float degtorad(int degrees) {
 const float radius = 0.346; //ft
 const float ftsToSpeed = 157.65; //ft per sec to motor speed
 
-const float Kp = 7.0;
-const float Ki = 0;
-const float Kd = 0;
-void vmotor(float Vx, float Vy) {
+const float Kp = 6.0;
+const float Ki = 0.0;
+const float Kd = 4.0;
+void vmotor(float Vx, float Vy, float* Vx_act, float* Vy_act) {
   static int perror = 0;
   static int Ierror = 0;
 
   upd_rotation();
 
   int rotChange;
-  if (rotation == 0) {
-    rotChange = 0;
-    Ierror = 0;
-  }
-  else {
-    rotChange = Kp*degtorad(rotation) + Kd*degtorad(rotation - perror) + Ki*degtorad(Ierror);  
-  }
+  rotChange = Kp*degtorad(rotation) + Kd*degtorad(rotation - perror) + Ki*degtorad(Ierror);  
 
   int s1 = ftsToSpeed * (-Vx/2 - sqrt(3)*Vy/2 + rotChange); //right motor
   int s2 = ftsToSpeed * (-Vx/2 + sqrt(3)*Vy/2 + rotChange); //left motor
   int s3 = ftsToSpeed * (Vx + rotChange); //back motor
+  
+  while(1) {
+    if (abs(s1) >= 60 || abs(s2) >= 60 || abs(s3) >= 60) {
+      s1 = (int)(s1 * 0.9f);
+      s2 = (int)(s2 * 0.9f);
+      s3 = (int)(s3 * 0.9f);
+    }
+    else {
+      break;
+    }
+  }
 
-  Serial.println(s1);
-  Serial.println(s2);
-  Serial.println(s3);
-  Serial.println(rotation);
-  Serial.println(rotChange);
+  if (abs(s1) <= 15) {
+    s1 = 0;
+  }
+  if (abs(s2) <= 15) {
+    s2 = 0;
+  }
+  if (abs(s3) <= 15) {
+    s3 = 0;
+  }
 
   motor(s1, s2, s3);
 
+  if (Vx_act != nullptr && Vy_act != nullptr) {
+    float m1 = (float)s1 / ftsToSpeed;
+    float m2 = (float)s2 / ftsToSpeed;
+    float m3 = (float)s3 / ftsToSpeed;
+
+    *Vx_act = (2.0*m3 - m1 - m2) / 3.0;
+    *Vy_act = (m2 - m1) / sqrt(3.0);
+  }
+
   perror = rotation;
-  Ierror += rotation;
+  if (abs(rotation) < 2) {
+    Ierror += rotation;
+  }
 }
