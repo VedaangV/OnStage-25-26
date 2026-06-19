@@ -1,4 +1,4 @@
-### setup ###
+### INFO ###
 # navigate to:
 # /lib/systemd/system/bluetooth.service.d/nv-bluetooth-service.conf
 
@@ -11,7 +11,7 @@
 # sudo apt-get update
 # sudo apt-get install pulseaudio-module-bluetooth
 
-### import libraries ###
+### import subfiles ###
 import pygame
 
 pygame.mixer.init()
