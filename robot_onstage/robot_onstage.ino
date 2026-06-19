@@ -14,6 +14,8 @@ const char* password = "todbot1234";
 
 float vx = 0.0;
 float vy = 0.0;
+float vx_act = 0.0;
+float vy_act = 0.0;
 
 #define LED 21  //LED on Pico W to indicate Wifi connection
 String inputBuffer = "";
@@ -66,19 +68,23 @@ void setup() {
 #else
 #endif
 
-  //get IMU initial value
-  upd_rotation();
-  rotation_offset = rotation;
   //reset encoders
   encoders = 0;
 
   //START indicator
   for(int i = 0; i < 3; i++) {
-    fillNPixel(WHITE);
-    delay(750);
     resetNPixel();
     delay(750);
+    fillNPixel(WHITE);
+    delay(750);
   } 
+
+  //get IMU initial value
+  sensors_event_t event;
+  bno.getEvent(&event);
+  rotation_offset = ((int) event.orientation.x);
+
+  upd_rotation();
 }
 
 void loop() {
@@ -93,13 +99,13 @@ void loop() {
         if (c == '\n') {
           if(inputBuffer.indexOf("d") != -1){
             inputBuffer = "";
-            vmotor(0,0);
-            depleteNPixel(3000, ICEBLUE);
+            motor(0,0,0);
+            wipeNPixel(3000, ICEBLUE, WHITE);
           }
           else if (inputBuffer.indexOf("c") != -1) {
             inputBuffer = "";
-            vmotor(0,0);
-            growNPixel(3000, ICEBLUE);
+            motor(0,0,0);
+            wipeNPixel(3000, WHITE, ICEBLUE);
             delay(2000);
           }
           else {
@@ -107,7 +113,9 @@ void loop() {
             Serial.println(vx);
             Serial.println(vy);
             inputBuffer = "";
-            vmotor(vx, vy); 
+            vmotor(vx, vy, &vx_act, &vy_act); 
+            String str = String(vx_act) + ", " + String(vy_act);
+            client.println(str);
           }
         } 
         else {
@@ -137,35 +145,35 @@ void loop() {
   // delay(750);
 
   //test overall motor config
-  for (int i = 0; i < 1000; i++) {
-    vmotor(0.4, 0);
-    delay(1);
-  }
+  // for (int t = 0; t < 1000; t++) {
+  //   vmotor(0.4*cos(2*PI*t/2000), 0.4*sin(2*PI*t/2000));
+  //   delay(1);
+  // }
+  // for (int t = 0; t < 2000; t++) {
+  //   vmotor(-0.4*cos(2*PI*t/2000), 0.4*sin(2*PI*t/2000));
+  //   delay(1);
+  // }
+  // for (int t = 0; t < 1000; t++) {
+  //   vmotor(-0.4*cos(2*PI*t/2000), -0.4*sin(2*PI*t/2000));
+  //   delay(1);
+  // }
 
-  for (int i = 0; i < 1000; i++) {
-    vmotor(-0.4, 0);
-    delay(1);
-  }
-
-   for (int i = 0; i < 1000; i++) {
-    vmotor(0, 0.4);
-    delay(1);
-  }
-
-  for (int i = 0; i < 1000; i++) {
-    vmotor(0, -0.4);
-    delay(1);
-  }
-
-  for (int i = 0; i < 1000; i++) {
-    vmotor(0.4, 0.4);
-    delay(1);
-  }
-
-  for (int i = 0; i < 1000; i++) {
-    vmotor(-0.4, -0.4);
-    delay(1);
-  }
+  // for (int i = 0; i < 1000; i++) {
+  //   vmotor(-0.4, 0);
+  //   delay(1);
+  // }
+  // for (int i = 0; i < 1000; i++) {
+  //   vmotor(0.4, 0);
+  //   delay(1);
+  // }
+  // for (int i = 0; i < 1000; i++) {
+  //   vmotor(0, 0.4);
+  //   delay(1);
+  // }
+  // for (int i = 0; i < 1000; i++) {
+  //   vmotor(0, -0.4);
+  //   delay(1);
+  // }
 
 #endif
 }
