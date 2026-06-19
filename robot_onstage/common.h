@@ -24,6 +24,7 @@ extern Adafruit_NeoPixel strip;
 extern int rotation;
 extern int rotation_offset;
 
+inline uint32_t CLEAR = strip.Color(0, 0, 0, 0);
 inline uint32_t ICEBLUE = strip.Color(0, 0, 255, 25);
 inline uint32_t WHITE = strip.Color(0, 0, 0, 255);
 inline uint32_t RED = strip.Color(255, 0, 0, 0);
@@ -38,7 +39,6 @@ void upd_rotation();
 
 void resetNPixel();
 void fillNPixel(uint32_t color, int count = LED_COUNT);
-void growNPixel(int ms, uint32_t color, int count = LED_COUNT);
-void depleteNPixel(int ms, uint32_t color, int count = LED_COUNT);
+void wipeNPixel(int ms, uint32_t color1, uint32_t color2, int count = LED_COUNT);
 
 #endif
