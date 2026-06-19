@@ -11,8 +11,14 @@ void upd_rotation() {
   sensors_event_t event;
   bno.getEvent(&event);
   raw = ((int) event.orientation.x);
-  raw = (raw > 180) ? (raw - 360) : raw; 
   rotation = raw - rotation_offset;
+  if (rotation > 360) {
+    rotation = rotation - 360;
+  }
+  if (rotation < 0) {
+    rotation = rotation + 360;
+  }
+  rotation = (rotation > 180) ? (rotation - 360) : rotation; 
 }
 
 void resetNPixel() {
@@ -24,28 +30,18 @@ void resetNPixel() {
 
 void fillNPixel(uint32_t color, int count) {
   for(int i = 0; i < count; i++) {
-    strip.setPixelColor(i, strip.Color(0, 0, 255, 25));
+    strip.setPixelColor(i, color);
   }
   strip.show();
 }
 
-void growNPixel(int ms, uint32_t color, int count){
+void wipeNPixel(int ms, uint32_t color1, uint32_t color2, int count){
   int tick = ms / count;
-  resetNPixel();
+  fillNPixel(color1);
   for(int i = 0; i < count; i++) {
-    strip.setPixelColor(i, strip.Color(0, 0, 255, 25));
+    strip.setPixelColor(i, color2);
     strip.show();
     delay(tick);
   } 
-  fillNPixel(count);
-}
-void depleteNPixel(int ms, uint32_t color, int count){
-  int tick = ms / count;
-  fillNPixel(count);
-  for(int i = 0; i < count; i++) {
-    strip.setPixelColor(i, strip.Color(0, 0, 0, 0));
-    strip.show();
-    delay(tick);
-  } 
-  resetNPixel();
+  fillNPixel(color2, count);
 }
