@@ -1,3 +1,4 @@
+### import subfiles ###
 import socket
 import time
 
@@ -29,6 +30,7 @@ def wifi_read(s):
 def wifi_disconnect(s):
     s.close()
 
+### testing ###
 if __name__ == "__main__":
     s = wifi_connect("192.168.32.209", 80)
     if (s == -1):
