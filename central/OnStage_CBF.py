@@ -1,17 +1,5 @@
-import math
-from OnStage_WifiComms import wifi_write
-
-# ---------------------------------------------------------------------------
-# Tunable constants
-# ---------------------------------------------------------------------------
-
-ROBOT_RADIUS     = 3.7   # 10*ft
-DIST_THRESHOLD   = 8      # arrival threshold (field units)
-ENABLE_WIFI      = True  # sync with OnStage_Master.py
-baseV            = 4      # max speed (10*ft/s)
-MIN_SPEED        = 4    # minimum speed (field units/s); prevents stalling at low velocities
-
-PLOT_TYPE = "RADIUS_PLOT" # "RADIUS_PLOT" "BOUNDARY_PLOT"
+### import subfiles ###
+from OnStage_Common import *
 
 def _closest_point_on_segment(px, py, ax, ay, bx, by):
     """Closest point on segment AB to point P."""
@@ -159,7 +147,7 @@ class CBFController:
         d  = math.sqrt(dx*dx + dy*dy)
         if d < 1e-6:
             return 0.0, 0.0
-        speed = min(self.k_att * d, baseV)
+        speed = min(self.k_att * d, MAX_SPEED)
         return dx/d * speed, dy/d * speed
 
     # -- constraint list -------------------------------------------------- #
@@ -229,7 +217,7 @@ class CBFController:
                     changed = True
             if not changed:
                 break
-        Vx, Vy = self._clip(Vx, Vy, baseV)
+        Vx, Vy = self._clip(Vx, Vy, MAX_SPEED)
 
         # Enforce minimum speed so the robot never crawls below MIN_SPEED
         # (preserves the zero-velocity return at the arrival check above)
@@ -237,38 +225,34 @@ class CBFController:
 
         return Vx, Vy
 
+def wifi_read_velocity(robot):
+    while (text := wifi_read(robot.sock)) == -1:
+        time.sleep(1)
+    matches = re.findall(r"[-+]?\d+\.\d+", text)
+    floats = [float(num) for num in matches]
+    robot.Vx_act = floats[0]
+    robot.Vy_act = floats[1]
 
-# ---------------------------------------------------------------------------
-# cbf_follow_path  (replaces pfield_path + followPath)
-# ---------------------------------------------------------------------------
-
-def cbf_follow_path(cbf, robot, all_robots, obstacles):
-    """
-    Single reactive CBF step. Call every main-loop iteration.
-
-    Returns True when the robot has arrived (caller should call
-    cbf_stop_robot), False while still en route.
-    """
+def followPath(cbf, robot, all_robots, obstacles):
     if robot.coords.distance_to(robot.target.coords) < DIST_THRESHOLD:
         return True
 
     Vx, Vy = cbf.compute_safe_velocity(robot, obstacles, all_robots)
+    robot.Vx = Vx
+    robot.Vy = Vy
 
     if ENABLE_WIFI:
-        wifi_write(robot.sock, f"vx: {Vx/10:.3f}, vy: {Vy/10:.3f}\n")
+        wifi_write(robot.sock, f"vx: {Vx:.3f}, vy: {Vy:.3f}\n")
+        wifi_thread = threading.Thread(target=wifi_read_velocity, args=[robot], daemon=True)
+        wifi_thread.start()
+                
     return False
 
-
-# ---------------------------------------------------------------------------
-# cbf_stop_robot  (replaces stopRobot)
-# ---------------------------------------------------------------------------
-
-def cbf_stop_robot(robot):
+def stopRobot(robot):
     """Send zero-velocity command and clear path."""
     if ENABLE_WIFI:
         wifi_write(robot.sock, "vx: 0, vy: 0\n")
-
-
+        
 # ===========================================================================
 # Stand-alone simulation / visualiser
 # ===========================================================================
@@ -379,12 +363,43 @@ if __name__ == "__main__":
         """
         def __init__(self, border):
             self.border = border   # list of (x, y) tuples
+            
+            # ---------------------------------------------------------------------------
+    # cbf_followPath  (replaces pfield_path + cbf_followPath)
+    # ---------------------------------------------------------------------------
+
+    def cbf_followPath(cbf, robot, all_robots, obstacles):
+        """
+        Single reactive CBF step. Call every main-loop iteration.
+
+        Returns True when the robot has arrived (caller should call
+        cbf_stopRobot), False while still en route.
+        """
+        if robot.coords.distance_to(robot.target.coords) < DIST_THRESHOLD:
+            return True
+
+        Vx, Vy = cbf.compute_safe_velocity(robot, obstacles, all_robots)
+
+        if ENABLE_WIFI:
+            wifi_write(robot.sock, f"vx: {Vx/10:.3f}, vy: {Vy/10:.3f}\n")
+                    
+        return False
+
+
+    # ---------------------------------------------------------------------------
+    # cbf_stopRobot  (replaces cbf_stopRobot)
+    # ---------------------------------------------------------------------------
+
+    def cbf_stopRobot(robot):
+        """Send zero-velocity command and clear path."""
+        if ENABLE_WIFI:
+            wifi_write(robot.sock, "vx: 0, vy: 0\n")
 
     # ------------------------------------------------------------------ #
     # Simulation parameters                                               #
     # ------------------------------------------------------------------ #
     
-    f = 0.75
+    f = 0.1
     SIM_FIELD       = int(80*f)
     SIM_DT          = 0.05
     STEPS_PER_FRAME = 3
@@ -598,7 +613,7 @@ if __name__ == "__main__":
             for _ in range(STEPS_PER_FRAME):
                 for rb in robots:
                     if rb.target is None: continue
-                    if not cbf_follow_path(cbf, rb, robots, obstacles):
+                    if not cbf_followPath(cbf, rb, robots, obstacles):
                         Vx, Vy = cbf.compute_safe_velocity(rb, obstacles, robots)
                         rb.move(Vx, Vy, SIM_DT)
 
