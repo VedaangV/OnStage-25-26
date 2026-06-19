@@ -8,40 +8,17 @@
 #    sudo apt install v4l-utils
 #    v4l2-ctl --list-devices
 
-### import libraries ###
-import sys
-import os
-import cv2
-import numpy as np
-import math
-import copy
-
-module_dir = os.path.abspath('/home/pi/onstage/python/apriltag/lib/python3.11/site-packages')
-sys.path.append(module_dir)
-import apriltag
+### import subfiles ###
+from OnStage_Common import *
 
 options = apriltag.DetectorOptions(families="tag36h11") #setup AT
 detector = apriltag.Detector(options)
 
 os.environ["OPENCV_LOG_LEVEL"] = "OFF"
 
-### objects ###
-class Point:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-
-    def distance_to(self, other_point):
-        dx = self.x - other_point.x
-        dy = self.y - other_point.y
-        return math.sqrt(dx**2 + dy**2)
-
-    def __str__(self):
-        return f"Point({self.x}, {self.y})"
-
 ### functions ###
-def convertPos(original_coords, anc_topleft, anc_topright, anc_bottomleft, field_width, field_length):
-    new_coords = Point(field_width*(abs(anc_topleft.x - original_coords.x) / abs(anc_topleft.x - anc_topright.x)), field_length*(abs(anc_bottomleft.y - original_coords.y) / abs(anc_topleft.y - anc_bottomleft.y)))
+def convertPos(original_coords, anc_topleft, anc_topright, anc_bottomleft):
+    new_coords = Point(FIELD_WIDTH*(abs(anc_topleft.x - original_coords.x) / abs(anc_topleft.x - anc_topright.x)), FIELD_LENGTH*(abs(anc_bottomleft.y - original_coords.y) / abs(anc_topleft.y - anc_bottomleft.y)))
     return new_coords
 
 def displayTags(results, img):
@@ -93,7 +70,7 @@ def initAnchors(cam, anchors):
         return 1, rgb
     return 0, rgb
     
-def updTagPos(cam, group, anchors, field_width, field_length):
+def updTagPos(cam, group, anchors):
     ### get image as RGB and GRAY ###
     ret, frame = cam.read()
     if not ret:
@@ -112,13 +89,13 @@ def updTagPos(cam, group, anchors, field_width, field_length):
             if (group[i].tag == r.tag_id):
                 tags_detected = tags_detected + 1
                 p = Point(r.center[0], r.center[1])
-                p = convertPos(p, anchors[0].coords, anchors[1].coords, anchors[2].coords, field_width, field_length)
-                if p.x > field_width:
-                    p.x = field_width
+                p = convertPos(p, anchors[0].coords, anchors[1].coords, anchors[2].coords)
+                if p.x > FIELD_WIDTH:
+                    p.x = FIELD_WIDTH
                 if p.x < 0:
                     p.x = 0
-                if p.y > field_length:
-                    p.y = field_length
+                if p.y > FIELD_LENGTH:
+                    p.y = FIELD_LENGTH
                 if p.y < 0:
                     p.y = 0
                 group[i].coords = p
@@ -129,9 +106,7 @@ def updTagPos(cam, group, anchors, field_width, field_length):
         return 1, rgb
     return 0, rgb
 
-AREA_MINIMUM = 5
-AREA_MAXIMUM = 10000
-def updObsPos(cam, obstacles, Lhsv, Uhsv, anchors, field_width, field_length):
+def updObsPos(cam, obstacles, anchors):
     ### get image as RGB ###
     ret, frame = cam.read()
     if not ret:
@@ -143,7 +118,7 @@ def updObsPos(cam, obstacles, Lhsv, Uhsv, anchors, field_width, field_length):
     ### canny edge detection ###
     frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     frame_gray_blurred = cv2.GaussianBlur(frame_gray, (3,3), 0)
-    frame_threshold = cv2.Canny(frame_gray, 160, 255) #160, 255
+    frame_threshold = cv2.Canny(frame_gray, CANNY_LBOUND, CANNY_UBOUND) #160, 255
     
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
     frame_threshold = cv2.dilate(frame_threshold, kernel, iterations=1)
@@ -184,16 +159,19 @@ def updObsPos(cam, obstacles, Lhsv, Uhsv, anchors, field_width, field_length):
         else:
             centroid = Point(0, 0)
             
-        centroid = convertPos(centroid, anchors[0].coords, anchors[1].coords, anchors[2].coords, field_width, field_length)
+#         if centroid.x < anchors[0].coords.x or centroid.x > anchors[1].coords.x or centroid.y < anchors[0].coords.y or centroid.y > anchors[2].coords.y:
+#             continue
+    
+        centroid = convertPos(centroid, anchors[0].coords, anchors[1].coords, anchors[2].coords)
         obstacles[obstacle_count].coords = centroid
         
         ### .radius = average of max and min dist from centoid along contour ###
         points = cnt.reshape(-1, 2)
-        minDist = field_width + field_length
+        minDist = FIELD_WIDTH + FIELD_LENGTH
         maxDist = 0
         for i in range(len(points)):
             point = Point(points[i][0], points[i][1])
-            point = convertPos(point, anchors[0].coords, anchors[1].coords, anchors[2].coords, field_width, field_length)
+            point = convertPos(point, anchors[0].coords, anchors[1].coords, anchors[2].coords)
             if (point.distance_to(centroid) < minDist):
                 minDist = point.distance_to(centroid)
             if (point.distance_to(centroid) > maxDist):
