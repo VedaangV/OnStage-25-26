@@ -24,5 +24,5 @@ extern Motor Motor2;
 extern Motor Motor3;
 
 //movement functions
-void motor(int, int, int);
-void vmotor(float, float);
+void motor(int speed1, int speed2, int speed3);
+void vmotor(float Vx, float Vy, float* Vx_act = nullptr, float* Vy_act = nullptr);
