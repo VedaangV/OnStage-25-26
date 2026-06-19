@@ -1,129 +1,11 @@
-### import libraries ###
-import numpy as np
-import math
-import threading
-import socket
-import time
-import cv2
-from munkres import Munkres, print_matrix
-
 ### import subfiles ###
+from OnStage_Common import *
 from OnStage_Rcoords import updTagPos, updObsPos, initAnchors
-from OnStage_WifiComms import wifi_connect, wifi_write, wifi_read, wifi_disconnect
-from OnStage_CBF import CBFController, cbf_follow_path, cbf_stop_robot
-from OnStage_Audio import *
-
-MAX_LEVEL = 4
-ENABLE_WIFI = True
-MALFUNCTION_THRESH = 50
-
-states = ["None", "Waiting", "Ice", "Plant"]
-
-### objects ###
-class Point:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-
-    def distance_to(self, other_point):
-        dx = self.x - other_point.x
-        dy = self.y - other_point.y
-        return math.sqrt(dx**2 + dy**2)
-
-    def __str__(self):
-        return f"Point({self.x}, {self.y})"
-
-class robot:
-    tag: int
-    IP: str
-    port: int
-    sock = None
-    coords: Point = Point(-1, -1)
-    target: None
-    state: str = "None"
-    haswater: bool = False
-    
-    #prev_coords: Point = Point(-1, -1)
-    #malf_counter: int = 0
-    
-    def __init__(self, IP, port, tag):
-        self.IP = IP;
-        self.port = port
-        self.tag = tag;
-    def setTarget(self, target):
-        self.target = target
-    def collectWater(self):
-        self.haswater = True
-        if ENABLE_WIFI == True:
-            wifi_write(self.sock, "collect")
-    def depleteWater(self):
-        self.haswater = False
-        if ENABLE_WIFI == True:
-            wifi_write(self.sock, "deplete")
-    def atTarget(self):
-        return (self.coords.distance_to(self.target) < DIST_THRESHOLD) #!tentative
-    #def malfunction(self):
-        #malf_counter += 1
-        #if (malf_counter > MALFUNCTION_THRESH):
-            #self.target = None
-            #self.state = "Malfunction"
-            #cbf_stop_robot(self)
-            #if ENABLE_WIFI == True:
-                #wifi_write(self.sock, "malfunction")
-    
-class anchor:
-    tag: int
-    coords: Point = Point(-1, -1)
-    
-    def __init__(self, tag):
-        self.tag = tag
-
-class obstacle:
-    coords: Point = Point(-1, -1)
-    radius: int = 0
-    border = []
-
-class plant:
-    tag: int
-    IP: str
-    port: int
-    sock = None
-    coords: Point = Point(-1, -1)
-    level: int = 0
-    available: bool = True
-    
-    def __init__(self, IP, port, tag):
-        self.IP = IP
-        self.port = port
-        self.tag = tag
-    def grow(self):
-        if (self.level < MAX_LEVEL):
-            play_watering()
-            self.level += 1
-            if ENABLE_WIFI == True:
-                wifi_write(self.sock, "G")
-
-class ice:
-    tag: int
-    IP: str
-    port: int
-    sock = None
-    coords: Point = Point(-1, -1)
-    level: int = MAX_LEVEL
-    available: bool = True
-    
-    def __init__(self, IP, port, tag):
-        self.IP = IP
-        self.port = port
-        self.tag = tag
-    def deplete(self):
-        if (self.level > 0):
-            play_mining()
-            self.level -= 1
-            if ENABLE_WIFI == True:
-                wifi_write(self.sock, "D")
+from OnStage_CBF import CBFController, followPath, stopRobot
 
 ###***** CLASS ARRAYS, CHANGE DEPENDING ON SETUP *****###
+#
+
 # robots = [robot("10.42.0.47", 5000, 0), robot("10.42.0.56", 5000, 5)]
 # anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
 # 
@@ -131,43 +13,36 @@ class ice:
 # plants = [plant("10.42.0.169", 80, 7), plant("10.42.0.140", 80, 8)]
 # icepatches = [ice("10.42.0.163", 81, 4), ice("10.42.0.61", 81, 6)]
 
-robots = [robot("192.168.32.152", 5000, 0), robot("192.168.32.147", 5000, 5)]
+robots = [robot("192.168.32.152", 5000, 0)]#robot("192.168.32.242", 5000, 5)]
 anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
 
 obstacles = [obstacle()]
-plants = [plant("192.168.32.209", 80, 7), plant("192.168.32.232", 80, 8)]
-icepatches = [ice("192.168.32.118", 81, 4), ice("192.168.32.172", 81, 6)]
-###***** *****####
+plants = [plant("192.168.32.231", 80, 8)]#, plant("192.168.32.209", 80, 7)]
+icepatches = [ice("192.168.32.171", 81, 6)]#ice("192.168.32.120", 81, 4), ice("192.168.32.172", 81, 6)]
 
-obstacle_Lhsv = [0, 0, 0]    #white
-obstacle_Uhsv = [55, 255, 255]
-
-
-field_width = 70  #ft*10  #scales x dimension of relative coordinates
-field_length = 50  #ft*10  #scales y dimension of relative coordinates
+#
+###*****     *****###
 
 ### CBF controller ###
-# gamma        : CBF aggressiveness — raise if robots get too close to obstacles/each other
-# k_att        : waypoint attraction strength
-# safety_margin: extra clearance in field units (on top of robot + obstacle radii)
-cbf = CBFController(gamma=0.7, k_att=2.5, safety_margin=2.0)
+cbf = CBFController(gamma=CBF_GAMMA, k_att=CBF_KATT, safety_margin=CBF_SAFETYMARGIN)
 
 ### setup camera ###
 class VideoStream:
     def __init__(self):
-        ### phone IPcam ###
-        gst_pipeline = (
-            "souphttpsrc location=http://192.168.32.214:8080/video is-live=true ! "
-            "multipartdemux ! "
-            "jpegdec ! "
-            "videoconvert ! "
-            "video/x-raw, format=BGR ! "
-            "appsink drop=true max-buffers=1 sync=false"
-        )
-        self.cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
-
-        ### USB webcam ###
-#         self.cap = cv2.VideoCapture(0)
+        if ("phone".casefold() in CAMERA_TYPE.casefold()) or ("ipcam".casefold() in CAMERA_TYPE.casefold()):
+            ### phone IPcam ###
+            gst_pipeline = (
+                "souphttpsrc location=http://192.168.32.214:8080/video is-live=true ! "
+                "multipartdemux ! "
+                "jpegdec ! "
+                "videoconvert ! "
+                "video/x-raw, format=BGR ! "
+                "appsink drop=true max-buffers=1 sync=false"
+            )
+            self.cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+        else:
+            ### USB webcam ###
+            self.cap = cv2.VideoCapture(0)
         
         if not self.cap.isOpened():
             print("Failed to open camera")
@@ -183,9 +58,9 @@ class VideoStream:
         while self.running:
             ret, frame = self.cap.read()
             # control Contrast 
-            alpha = 1.0
+            alpha = CAMERA_CONTRAST
             # control brightness
-            beta = 0
+            beta = CAMERA_BRIGHTNESS
             frame = cv2.convertScaleAbs(frame, alpha=alpha, beta=beta) 
             if ret:
                 with self.lock:
@@ -202,17 +77,20 @@ class VideoStream:
         
 cam = VideoStream()
 
-def displayElements(img, anchors, robots, obstacles, field_width, field_length):
+def displayElements(img, anchors, robots, obstacles):
     for robot in robots:
-        cv2.circle(img, (int(robot.coords.x / field_width * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.coords.y / field_length * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 7, (0, 100, 255), -1)
-        if hasattr(robot, "target") and hasattr(robot.target, "coords"):
-            cv2.circle(img, (int(robot.target.coords.x / field_width * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.target.coords.y / field_length * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 5, (0, 255, 0), -1)
+        startpt = (int(robot.coords.x / FIELD_WIDTH * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.coords.y / FIELD_LENGTH * (abs(anchors[0].coords.y - anchors[2].coords.y))))
+        endpt = (int((robot.coords.x + robot.Vx) / FIELD_WIDTH * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - (robot.coords.y + robot.Vy) / FIELD_LENGTH * (abs(anchors[0].coords.y - anchors[2].coords.y))))
+        cv2.arrowedLine(img, startpt, endpt, (0, 255, 0), 3)
+        
+        endpt = (int((robot.coords.x + robot.Vx_act) / FIELD_WIDTH * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - (robot.coords.y + robot.Vy_act) / FIELD_LENGTH * (abs(anchors[0].coords.y - anchors[2].coords.y))))
+        cv2.arrowedLine(img, startpt, endpt, (0, 100, 255), 3)
         
         for obs in obstacles:
             pts = np.array(obs.border)
             for i in range(len(pts)):
-                pts[i][0] = pts[i][0] / field_width * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x
-                pts[i][1] = anchors[2].coords.y - pts[i][1] / field_length * (abs(anchors[0].coords.y - anchors[2].coords.y))
+                pts[i][0] = pts[i][0] / FIELD_WIDTH * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x
+                pts[i][1] = anchors[2].coords.y - pts[i][1] / FIELD_LENGTH * (abs(anchors[0].coords.y - anchors[2].coords.y))
             pts = pts.astype(np.int32)
             cv2.polylines(img, [pts], isClosed=True, color=(0, 0, 255), thickness=2)
     return img
@@ -283,7 +161,43 @@ def assignTargets(robots, icepatches, plants): # system = plants or ice
             if r.state != "Plant":
                 r.state = "Waiting"
     return
+
+def performance():
+    while True:
+        err, img = updTagPos(cam, robots, anchors)
     
+        for robot in robots:
+            if robot.state == "None" or robot.state == "Waiting":
+                stopRobot(robot)
+            elif followPath(cbf, robot, robots, obstacles) == True:
+                stopRobot(robot)
+                if (robot.state == "Ice"):
+                    robot.target.deplete()
+                    if robot.target.level == 0:
+                        robot.target.available = False
+                    else:
+                        robot.target.available = True
+                    robot.collectWater()
+                if (robot.state == "Plant"):
+                    robot.target.grow()
+                    if robot.target.level == PLANT_LEVEL:
+                        robot.target.available = False
+                    else:
+                        robot.target.available = True
+                    robot.depleteWater()
+                robot.state = "None"
+                robot.target = None
+                assignTargets(robots, icepatches, plants)
+            else:
+                continue
+        
+        if (err != -1):
+            img = displayElements(img, anchors, robots, obstacles)
+            cv2.imshow("Testing", img)
+            cv2.setWindowProperty("Testing", cv2.WND_PROP_TOPMOST, 1)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+            
 ### main ###
 if __name__ == "__main__":
     play_bg() ### start the background music
@@ -298,7 +212,7 @@ if __name__ == "__main__":
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     cv2.destroyAllWindows()
-     
+    
     ### initialize wifi ###
     if ENABLE_WIFI == True:
         for robot in robots:
@@ -323,7 +237,7 @@ if __name__ == "__main__":
             break
     
     # plants, ice, robots
-    while(res := updTagPos(cam, plants, anchors, field_width, field_length))[0] != 1:
+    while(res := updTagPos(cam, plants, anchors))[0] != 1:
         for plant in plants:
             print(f"Plant AT{plant.tag}: {plant.coords.x:.2f} {plant.coords.y:.2f}") #testing#
         print("")
@@ -331,7 +245,7 @@ if __name__ == "__main__":
         cv2.imshow("Testing", img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-    while(res := updTagPos(cam, icepatches, anchors, field_width, field_length))[0] != 1:
+    while(res := updTagPos(cam, icepatches, anchors))[0] != 1:
         for ice in icepatches:
             print(f"Ice AT{ice.tag}: {ice.coords.x:.2f} {ice.coords.y:.2f}")
         print("")
@@ -339,7 +253,7 @@ if __name__ == "__main__":
         cv2.imshow("Testing", img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-    while(res := updTagPos(cam, robots, anchors, field_width, field_length))[0] != 1:
+    while(res := updTagPos(cam, robots, anchors))[0] != 1:
         for robot in robots:
             print(f"Robot AT{robot.tag}: {robot.coords.x:.2f} {robot.coords.y:.2f}") #testing#
         print("")
@@ -349,7 +263,7 @@ if __name__ == "__main__":
             break
 
     # obstacles
-    while (res := updObsPos(cam, obstacles, obstacle_Lhsv, obstacle_Uhsv, anchors, field_width, field_length))[0] != 1:
+    while (res := updObsPos(cam, obstacles, anchors))[0] != 1:
         img = res[1]
         cv2.imshow("Testing", img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -363,62 +277,18 @@ if __name__ == "__main__":
                 obstacles.pop(i)
             else:
                 i = i + 1
-    for idx, obs in enumerate(obstacles):
-        for i in range(len(obs.border)):
-            if (obs.border[i][0] < 0 or obs.border[i][0] > field_width or obs.border[i][1] < 0 or obs.border[i][1] > field_width):
-                obstacles.pop(idx)
-                break
-                
     
     input("Press Enter to start: ")
     
-    ### get path of points to target ###
     assignTargets(robots, icepatches, plants)
     for robot in robots:
-        if (robot.state != "None" and robot.state != "Waiting"):
-            cbf_follow_path(cbf, robot, robots, obstacles)
+        if (robot.state == "Ice" or robot.state == "Plant"):
+            followPath(cbf, robot, robots, obstacles)
         else:
             continue
     
     ### main loop ###
-    while True:
-        err, img = updTagPos(cam, robots, anchors, field_width, field_length)
-        for robot in robots:
-            #if (err == 0 && (robot.prev_coords.distance_to(robot.coords) < 1)):
-                #robot.malfunction()
-            #robot.prev_coords = robot.coords
-                        
-            if robot.state == "None" or robot.state == "Waiting":
-                cbf_stop_robot(robot)
-            elif (cbf_follow_path(cbf, robot, robots, obstacles) == True):
-                cbf_stop_robot(robot)
-                if (robot.state == "Ice"):
-                    robot.target.deplete()
-                    if robot.target.level == 0:
-                        robot.target.available = False
-                    else:
-                        robot.target.available = True
-                    robot.collectWater()
-                if (robot.state == "Plant"):
-                    robot.target.grow()
-                    if robot.target.level == MAX_LEVEL:
-                        robot.target.available = False
-                    else:
-                        robot.target.available = True
-                    robot.depleteWater()
-                robot.state = "None"
-                robot.target = None
-                assignTargets(robots, icepatches, plants)
-                if (robot.state == "Plant" or robot.state == "Ice"):
-                    cbf_follow_path(cbf, robot, robots, obstacles)
-            else:
-                continue
-        
-        if (err != -1):
-            img = displayElements(img, anchors, robots, obstacles, field_width, field_length)
-            cv2.imshow("Testing", img)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+    performance()
     
     cv2.destroyAllWindows()
     cam.stop()
