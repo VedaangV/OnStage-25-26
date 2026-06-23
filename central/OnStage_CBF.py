@@ -64,7 +64,7 @@ class CBFController:
     max_iter      : Projection iterations per control step.
     """
 
-    def __init__(self, gamma=1.5, k_att=1.2, safety_margin=2.0, max_iter=20):
+    def __init__(self, gamma=0.7, k_att=1.2, safety_margin=0.5, max_iter=20):
         self.gamma         = gamma
         self.k_att         = k_att
         self.safety_margin = safety_margin
@@ -225,16 +225,17 @@ class CBFController:
 
         return Vx, Vy
 
-def wifi_read_velocity(robot):
-    while (text := wifi_read(robot.sock)) == -1:
-        time.sleep(1)
+async def wifi_read_velocity(robot):
+    text = await wifi_read(robot.reader)
     matches = re.findall(r"[-+]?\d+\.\d+", text)
     floats = [float(num) for num in matches]
     robot.Vx_act = floats[0]
     robot.Vy_act = floats[1]
 
-def followPath(cbf, robot, all_robots, obstacles):
-    if robot.coords.distance_to(robot.target.coords) < DIST_THRESHOLD:
+_current_task: asyncio.Task | None = None
+async def followPath(cbf, robot, all_robots, obstacles, threshold = DIST_THRESHOLD):
+    global _current_task
+    if robot.coords.distance_to(robot.target.coords) < threshold:
         return True
 
     Vx, Vy = cbf.compute_safe_velocity(robot, obstacles, all_robots)
@@ -242,16 +243,16 @@ def followPath(cbf, robot, all_robots, obstacles):
     robot.Vy = Vy
 
     if ENABLE_WIFI:
-        wifi_write(robot.sock, f"vx: {Vx:.3f}, vy: {Vy:.3f}\n")
-        wifi_thread = threading.Thread(target=wifi_read_velocity, args=[robot], daemon=True)
-        wifi_thread.start()
+        await wifi_write(robot.writer, f"vx: {Vx:.3f}, vy: {Vy:.3f}\n")
+        if _current_task is None or _current_task.done():
+            _current_task = asyncio.create_task(wifi_read_velocity(robot))
                 
     return False
 
-def stopRobot(robot):
+async def stopRobot(robot):
     """Send zero-velocity command and clear path."""
     if ENABLE_WIFI:
-        wifi_write(robot.sock, "vx: 0, vy: 0\n")
+        await wifi_write(robot.writer, "vx: 0, vy: 0\n")
         
 # ===========================================================================
 # Stand-alone simulation / visualiser
@@ -379,9 +380,6 @@ if __name__ == "__main__":
             return True
 
         Vx, Vy = cbf.compute_safe_velocity(robot, obstacles, all_robots)
-
-        if ENABLE_WIFI:
-            wifi_write(robot.sock, f"vx: {Vx/10:.3f}, vy: {Vy/10:.3f}\n")
                     
         return False
 
@@ -392,14 +390,13 @@ if __name__ == "__main__":
 
     def cbf_stopRobot(robot):
         """Send zero-velocity command and clear path."""
-        if ENABLE_WIFI:
-            wifi_write(robot.sock, "vx: 0, vy: 0\n")
+        pass
 
     # ------------------------------------------------------------------ #
     # Simulation parameters                                               #
     # ------------------------------------------------------------------ #
     
-    f = 0.1
+    f = 0.05
     SIM_FIELD       = int(80*f)
     SIM_DT          = 0.05
     STEPS_PER_FRAME = 3
@@ -440,7 +437,7 @@ if __name__ == "__main__":
             r = [SimRobot(int(10*f), int(20*f), int(70*f), int(60*f), 0)]
             o = [
                 # Rectangular wall in the centre
-                SimPolyObstacle([(int(42*f), int(52*f)), (int(58*f), int(52*f)), (int(58*f), int(58*f)), (int(42*f), int(58*f))]),
+                SimPolyObstacle([(int(42*f), int(42*f)), (int(58*f), int(42*f)), (int(58*f), int(58*f)), (int(42*f), int(58*f))]),
                 # Triangle near bottom-right
                 SimPolyObstacle([(int(28*f), int(42*f)), (int(38*f), int(42*f)), (int(38*f), int(20*f)), (int(28*f), int(20*f))]),
             ]
@@ -511,7 +508,7 @@ if __name__ == "__main__":
 
     sim = dict(robots=[], obstacles=[], violations=0, t=0.0, steps=0,
                running=True, scenario="cross",
-               cbf=CBFController(gamma=1.5, k_att=1.2, safety_margin=2.0))
+               cbf=CBFController(gamma=0.7, k_att=1.2, safety_margin=0.5))
 
     artists = dict(trails=[], robot_bodies=[], goal_markers=[],
                    safety_rings=[], obs_patches=[], obs_rings=[])
