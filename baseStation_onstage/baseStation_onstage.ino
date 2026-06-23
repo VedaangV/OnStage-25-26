@@ -104,6 +104,5 @@ void loop() {
   }
   /* Testing w/out wifi */
   // shake();
-  // delay(1000);
-  // stopShake();`
+ 
 }
