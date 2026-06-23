@@ -70,8 +70,7 @@ void setup() {
 
 
 
-void shake() {
-
+void activate() {
   windmill.attach(servoPin);
   windmill.write(0);
   sPanel.speed(30);
@@ -80,11 +79,12 @@ void shake() {
   delay(100);
 }
 
-void stopShake(){
+void deactivate(){
   sPanel.speed(0);
   windmill.detach();
 }
 
+char state = 'd';
 void loop() {
   /* Testing w/ wifi*/
   client = server.accept();
@@ -93,11 +93,15 @@ void loop() {
       char req = (char)client.read();
       Serial.printf("Message received: ");
       Serial.printf("%c\n", req);
-      if (req == 'a') {
-        shake();
+      if (req == 'a' || req == 'd') {
+        state = req;
       }
-      else if (req == 'd'){
-        stopShake();
+      
+      if (state == 'a'){
+        activate();
+      }
+      else {
+        deactivate();
       }
     }
     client.stop();
