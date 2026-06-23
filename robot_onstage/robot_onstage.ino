@@ -16,6 +16,7 @@ float vx = 0.0;
 float vy = 0.0;
 float vx_act = 0.0;
 float vy_act = 0.0;
+bool haswater = false;
 
 #define LED 21  //LED on Pico W to indicate Wifi connection
 String inputBuffer = "";
@@ -72,11 +73,11 @@ void setup() {
   encoders = 0;
 
   //START indicator
-  for(int i = 0; i < 3; i++) {
+  for(int i = 0; i < 4; i++) {
     resetNPixel();
-    delay(750);
+    delay(500);
     fillNPixel(WHITE);
-    delay(750);
+    delay(500);
   } 
 
   //get IMU initial value
@@ -97,18 +98,40 @@ void loop() {
       if (client.available()) { // If there is data available to read
         char c = client.read(); // Read a character
         if (c == '\n') {
-          if(inputBuffer.indexOf("d") != -1){
+          if(inputBuffer.indexOf("deplete") != -1){
             inputBuffer = "";
             motor(0,0,0);
             wipeNPixel(3000, ICEBLUE, WHITE);
+            haswater = false;
+            delay(500);
           }
-          else if (inputBuffer.indexOf("c") != -1) {
+          else if (inputBuffer.indexOf("collect") != -1) {
             inputBuffer = "";
             motor(0,0,0);
             wipeNPixel(3000, WHITE, ICEBLUE);
-            delay(2000);
+            haswater = true;
+            delay(500);
+          }
+          else if (inputBuffer.indexOf("dust") != -1) {
+            inputBuffer = "";
+            motor(0,0,0);
+            delay(500);
+            resetNPixel();
+            for(int i = 0; i < 4; i++) {
+              resetNPixel();
+              delay(500);
+              fillNPixel(RED);
+              delay(500);
+            } 
+            delay(1000);
           }
           else {
+            if (haswater == true) {
+            
+            }
+            else {
+
+            }
             parseVelocity(inputBuffer);
             Serial.println(vx);
             Serial.println(vy);
@@ -130,9 +153,6 @@ void loop() {
 
   //*** TESTING ***//
   //test individual motor config
-  // motor(30, 0, 0);
-  // delay(750);
-  // motor(0, 30, 0);
   // delay(750);
   // motor(0, 0, 30);
   // delay(750);
