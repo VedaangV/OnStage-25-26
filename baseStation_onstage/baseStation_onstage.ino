@@ -93,9 +93,10 @@ void loop() {
       char req = (char)client.read();
       Serial.printf("Message received: ");
       Serial.printf("%c\n", req);
-      if (req == 'S') {
+      if (req == 'a') {
         shake();
-      }else if (req == 'T'){
+      }
+      else if (req == 'd'){
         stopShake();
       }
     }
