@@ -18,7 +18,7 @@ os.environ["OPENCV_LOG_LEVEL"] = "OFF"
 
 ### functions ###
 def convertPos(original_coords, anc_topleft, anc_topright, anc_bottomleft):
-    new_coords = Point(FIELD_WIDTH*(abs(anc_topleft.x - original_coords.x) / abs(anc_topleft.x - anc_topright.x)), FIELD_LENGTH*(abs(anc_bottomleft.y - original_coords.y) / abs(anc_topleft.y - anc_bottomleft.y)))
+    new_coords = Point(FIELD_WIDTH*((anc_topleft.x - original_coords.x) / (anc_topleft.x - anc_topright.x)), FIELD_LENGTH*((anc_bottomleft.y - original_coords.y) / (anc_bottomleft.y - anc_topleft.y)))
     return new_coords
 
 def displayTags(results, img):
@@ -188,3 +188,42 @@ def updObsPos(cam, obstacles, anchors):
     if obstacle_count > 0:
         return 1, ctrs
     return 0, ctrs
+
+def updBasePos(cam, base, anchors):
+    ### get image as RGB and GRAY ###
+    ret, frame = cam.read()
+    if not ret:
+        print("Failed to get camera frame")
+        return -1, None
+    rgb = frame
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    
+    ### get AT detection results ###
+    results = detector.detect(gray)
+    
+    ### update robot x and y values
+    for r in results:
+        if (base.tag == r.tag_id):
+            p = Point(r.center[0], r.center[1])
+            (ptA, ptB, ptC, ptD) = r.corners
+            ptB = (int(ptB[0]), int(ptB[1]))
+            ptC = (int(ptC[0]), int(ptC[1]))
+            ptD = (int(ptD[0]), int(ptD[1]))
+            ptA = (int(ptA[0]), int(ptA[1]))
+            
+            rotation = -math.atan(ptA[1] - ptB[1]/ptA[0]-ptB[0])
+            
+            p = convertPos(p, anchors[0].coords, anchors[1].coords, anchors[2].coords)
+            
+            p1 = Point(p.x - math.cos(rotation)*ROBOT_RADIUS, p.y - math.sin(rotation)*ROBOT_RADIUS)
+            p2 = Point(p1.x - math.sin(rotation)*ROBOT_RADIUS, p1.y + math.cos(rotation)*ROBOT_RADIUS)
+            
+            base.coords = p
+            base.entrances[0].coords = p1
+            base.entrances[1].coords = p2
+            break
+            
+    rgb = displayTags(results, rgb)
+    if base.coords.x < 0 or base.coords.y < 0:
+        return 0, rgb
+    return 1, rgb
