@@ -1,43 +1,64 @@
 ### import subfiles ###
+import asyncio
 import socket
 import time
 
-def wifi_connect(IP, port): 
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    err = s.connect_ex((IP, port))
-    if (err != 0):
-        print(f"Failed to connect to {IP} {port}")
-        return -1
-    print(f"Connected to {IP} {port}")
-    return s
+data_queue = asyncio.Queue()
 
-def wifi_write(s, message):
-    message = f"{message}"
-    err = s.send(message.encode())
-    if (err == 0):
-        print("Failed to send message")
-        return -1
-    print("Sent:", message.strip())
-    return
+async def wifi_connect(host: str, port: int, timeout: float = 5.0):
+    reader, writer = None, None
+    try:
+        # Wrap the connection attempt with an explicit timeout
+        reader, writer = await asyncio.wait_for(
+            asyncio.open_connection(host, port), 
+            timeout=timeout
+        )
+        print(f"Successfully connected to {host}:{port}")
+        return reader, writer
+
+    except TimeoutError:
+        print(f"Connection error: Attempt to connect to {host}:{port} timed out.")
+    except ConnectionRefusedError:
+        print(f"Connection error: Server at {host}:{port} refused the connection.")
+    except socket.gaierror:
+        print(f"Connection error: Could not resolve hostname '{host}'.")
+    except OSError as e:
+        print(f"Network error occurred: {e}")
+    except asyncio.CancelledError:
+        print("Connection task was cancelled.")
+        raise  # It is best practice to re-raise CancelledError in asyncio
+    except Exception as e:
+        print(f"Unexpected error: {e}")
         
-def wifi_read(s):
-    reply = s.recv(1024).decode().strip()
-    if reply:
-        print("Replied:", reply)
-        return reply
-    return -1
-
-def wifi_disconnect(s):
-    s.close()
-
-### testing ###
-if __name__ == "__main__":
-    s = wifi_connect("192.168.32.209", 80)
-    if (s == -1):
-        exit(1)
-    
-    while (wifi_write(s, "G") == -1):
-        time.sleep(10)
-        continue
+    # Ensure partial connections are closed if an error occurs post-creation
+    if writer:
+        writer.close()
+        await writer.wait_closed()
         
-    wifi_disconnect(s)
+    return None, None
+
+async def wifi_read(reader):
+    try:
+        while True:
+            data = await reader.read(1024)
+            if not data:
+                print("Connection closed by server.")
+                break
+            print(f"Received: {data.decode().strip()}")
+            return data.decode().strip()
+    except asyncio.CancelledError:
+        pass
+
+async def wifi_write(writer, message):
+    try:
+        message = f"{message}"
+        writer.write(message.encode())
+        await writer.drain()
+        print(f"Sent: {message}")
+#         await asyncio.sleep(1)
+    except asyncio.CancelledError:
+        pass
+
+async def wifi_disconnect(s):
+    writer.close()
+    await writer.wait_closed()
