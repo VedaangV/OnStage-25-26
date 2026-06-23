@@ -2,12 +2,16 @@
 import sys
 import os
 import numpy as np
+
 import math
 import re
-import subprocess
-import threading
+
+import asyncio
 import socket
 import time
+import subprocess
+import threading
+
 import copy
 
 import cv2
@@ -22,30 +26,37 @@ from OnStage_WifiComms import *
 
 ### constants ###
 ENABLE_WIFI = True
-FIELD_WIDTH = 3.5 #ft
-FIELD_LENGTH = 3.5 #ft
+ENABLE_SOUND = False
+FIELD_WIDTH = 4.5 #ft
+FIELD_LENGTH = 5.5 #ft
 
 #_Common.py
 ICE_LEVEL = 4
 PLANT_LEVEL = 4
 
 #_Master.py
-CBF_GAMMA = 0.7 #CBF aggressiveness — raise if robots get too close to obstacles/each other
+DUSTSTORM_ACTIVATION_TIME = 10 # seconds
+DUSTSTORM_PAUSE = 5 # seconds
+CBF_GAMMA = 2.0 #CBF aggressiveness — raise if robots get too close to obstacles/each other
 CBF_KATT = 1.2 #waypoint attraction strength
-CBF_SAFETYMARGIN = 0.37 #extra clearance in field units (on top of robot + obstacle radii)
+CBF_SAFETYMARGIN = 0.1 #extra clearance in field units (on top of robot + obstacle radii)
 CAMERA_TYPE = "usb"
 CAMERA_CONTRAST = 1.0
 CAMERA_BRIGHTNESS = -40
+WIN_FSCRN_WIDTH = 1920
+WIN_FSCRN_HEIGHT = 1080
+WIN_WIDTH = 640
+WIN_HEIGHT = 480
 
 #_CBF.py
 ROBOT_RADIUS     = 0.37 #ft
-DIST_THRESHOLD   = 0.8 #ft #how from target to count as successful
+DIST_THRESHOLD   = 0.40 #ft #how from target to count as successful
 MAX_SPEED        = 0.4 #ft/s
 MIN_SPEED        = 0.4 #ft/s
 
 #_Rcoords.py
-CANNY_LBOUND = 160
-CANNY_UBOUND = 255
+CANNY_LBOUND = 150
+CANNY_UBOUND = 180
 AREA_MINIMUM = 5 #minimum area of contour to be considered an obstacle
 AREA_MAXIMUM = 10000 #maximum area of contour to be considered an obstacle
 
@@ -67,9 +78,10 @@ class robot:
     tag: int
     IP: str
     port: int
-    sock = None
+    reader = None
+    writer = None
     coords: Point = Point(-1, -1)
-    target: None
+    target = None
     state: str = "None"
     haswater: bool = False
     
@@ -84,14 +96,23 @@ class robot:
         self.tag = tag;
     def setTarget(self, target):
         self.target = target
-    def collectWater(self):
+    async def collectWater(self):
         self.haswater = True
         if ENABLE_WIFI == True:
-            wifi_write(self.sock, "collect")
-    def depleteWater(self):
+            await wifi_write(self.writer, "collect")
+    async def depleteWater(self):
         self.haswater = False
         if ENABLE_WIFI == True:
-            wifi_write(self.sock, "deplete")
+            await wifi_write(self.writer, "deplete")
+    async def dustStorm(self):
+        if ENABLE_WIFI == True:
+            await wifi_write(self.writer, "dust")
+    async def enterBase(self, direction):
+        if ENABLE_WIFI == True:
+            await wifi_write(self.writer, "enter")
+    async def exitBase(self):
+        if ENABLE_WIFI == True:
+            await wifi_write(self.writer, "exit")
     
 class anchor:
     tag: int
@@ -109,7 +130,8 @@ class plant:
     tag: int
     IP: str
     port: int
-    sock = None
+    reader = None
+    writer = None
     coords: Point = Point(-1, -1)
     level: int = 0
     available: bool = True
@@ -118,18 +140,20 @@ class plant:
         self.IP = IP
         self.port = port
         self.tag = tag
-    def grow(self):
+    async def grow(self):
         if (self.level < PLANT_LEVEL):
-            play_watering()
+            if ENABLE_SOUND == True:
+                play_watering()
             self.level += 1
             if ENABLE_WIFI == True:
-                wifi_write(self.sock, "G")
+                await wifi_write(self.writer, "G")
 
 class ice:
     tag: int
     IP: str
     port: int
-    sock = None
+    reader = None
+    writer = None
     coords: Point = Point(-1, -1)
     level: int = ICE_LEVEL
     available: bool = True
@@ -138,9 +162,37 @@ class ice:
         self.IP = IP
         self.port = port
         self.tag = tag
-    def deplete(self):
+    async def deplete(self):
         if (self.level > 0):
-            play_mining()
+            if ENABLE_SOUND == True:
+                play_mining()
             self.level -= 1
             if ENABLE_WIFI == True:
-                wifi_write(self.sock, "D")
+                await wifi_write(self.writer, "D")
+
+class entrance:
+    coords: Point = Point(-1, -1)
+    available: bool = True
+    
+    def __init__(self):
+        pass
+    
+class base:
+    tag: int
+    IP: str
+    port: int
+    reader = None
+    writer = None
+    coords: Point = Point(-1, -1)
+    entrances = [entrance(), entrance()]
+    
+    def __init__(self, IP, port, tag):
+        self.IP = IP
+        self.port = port
+        self.tag = tag
+    async def dustStorm(self):
+        if ENABLE_WIFI == True:
+            await wifi_write(self.writer, "a")
+    async def normal(self):
+        if ENABLE_WIFI == True:
+            await wifi_write(self.writer, "d")
