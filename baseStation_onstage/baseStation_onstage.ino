@@ -71,9 +71,13 @@ void setup() {
 
 
 void shake() {
-  sPanel.speed(30);
+
   windmill.attach(servoPin);
   windmill.write(0);
+  sPanel.speed(30);
+  delay(100);
+  sPanel.speed(-30);
+  delay(100);
 }
 
 void stopShake(){
