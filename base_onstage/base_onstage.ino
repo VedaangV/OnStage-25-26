@@ -51,16 +51,15 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
-  windmill.attach(servoPin);
 
   /* Wifi stuff */
-  Serial.printf("Connecting to '%s' with '%s'\n", ssid, pswd);
-  WiFi.begin(ssid, pswd);
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.print(".");
-    delay(1000);
-  }
-  Serial.printf("\nConnected to WiFi\n\nConnect to server at %s:%d\n", WiFi.localIP().toString().c_str(), PORT);
+  // Serial.printf("Connecting to '%s' with '%s'\n", ssid, pswd);
+  // WiFi.begin(ssid, pswd);
+  // while (WiFi.status() != WL_CONNECTED) {
+  //   Serial.print(".");
+  //   delay(1000);
+  // }
+  // Serial.printf("\nConnected to WiFi\n\nConnect to server at %s:%d\n", WiFi.localIP().toString().c_str(), PORT);
 
 
 
@@ -70,21 +69,21 @@ void setup() {
 
 
 
-void activate() {
+void shake() {
+
   windmill.attach(servoPin);
-  windmill.write(0);
-  sPanel.speed(30);
-  delay(100);
-  sPanel.speed(-30);
-  delay(100);
+  windmill.write(35);
+  sPanel.speed(50);
+  delay(175);
+  sPanel.speed(-50);
+  delay(175);
 }
 
-void deactivate(){
+void stopShake(){
   sPanel.speed(0);
   windmill.detach();
 }
 
-char state = 'd';
 void loop() {
   /* Testing w/ wifi*/
   client = server.accept();
@@ -93,21 +92,20 @@ void loop() {
       char req = (char)client.read();
       Serial.printf("Message received: ");
       Serial.printf("%c\n", req);
-      if (req == 'a' || req == 'd') {
-        state = req;
-      }
-      
-      if (state == 'a'){
-        activate();
-      }
-      else {
-        deactivate();
+      if (req == 'S') {
+        shake();
+      }else if (req == 'T'){
+        stopShake();
       }
     }
     client.stop();
     Serial.println("Client disconnected");
   }
   /* Testing w/out wifi */
-  // shake();
- 
+//shake();
+  //windmill.attach(servoPin);
+  //windmill.write(165);// fast on battery
+  //windmill.write(70);
+
+ // windmill.write(0);
 }
