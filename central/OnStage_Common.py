@@ -36,8 +36,7 @@ ICE_LEVEL = 4
 PLANT_LEVEL = 4
 
 #_Master.py
-DUSTSTORM_ACTIVATION_TIME = 15 # seconds
-DUSTSTORM_PAUSE = 5 # seconds
+DUSTSTORM_ACTIVATION_TIME = 40 # seconds
 CBF_GAMMA = 2.0 #CBF aggressiveness — raise if robots get too close to obstacles/each other
 CBF_KATT = 1.2 #waypoint attraction strength
 CBF_SAFETYMARGIN = 0 #extra clearance in field units (on top of robot + obstacle radii)
