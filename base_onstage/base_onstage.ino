@@ -5,7 +5,7 @@
 #define PORT 80
 
 
-const char* ssid = "jetson";
+const char* ssid = "StormingKids";
 const char* pswd = "todbot1234";
 
 
@@ -50,8 +50,8 @@ WiFiClient client;
 void setup() {
   Serial.begin(115200);
   delay(1000);
-  
   pinMode(LED_BUILTIN, OUTPUT);
+
 
   /* Wifi stuff */
   Serial.printf("Connecting to '%s' with '%s'\n", ssid, pswd);
@@ -73,7 +73,7 @@ void setup() {
 void shake() {
 
   windmill.attach(servoPin);
-  windmill.write(35);
+  windmill.write(0);
   sPanel.speed(50);
   delay(175);
   sPanel.speed(-50);
@@ -85,6 +85,7 @@ void stopShake(){
   windmill.detach();
 }
 
+char state = 'T';
 void loop() {
   /* Testing w/ wifi*/
   client = server.accept();
@@ -93,9 +94,12 @@ void loop() {
       char req = (char)client.read();
       Serial.printf("Message received: ");
       Serial.printf("%c\n", req);
-      if (req == 'S') {
+      if (req == 'S' || req == 'T') {
+        state = req;
+      }
+      if (state == 'S') {
         shake();
-      }else if (req == 'T'){
+      }else if (state == 'T'){
         stopShake();
       }
     }
@@ -107,6 +111,4 @@ void loop() {
   //windmill.attach(servoPin);
   //windmill.write(165);// fast on battery
   //windmill.write(70);
-
- // windmill.write(0);
 }
