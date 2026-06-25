@@ -6,20 +6,21 @@ from OnStage_CBF import CBFController, followPath, stopRobot
 ###***** CLASS ARRAYS, CHANGE DEPENDING ON SETUP *****###
 #
 
-# robots = [robot("10.42.0.47", 5000, 0), robot("10.42.0.56", 5000, 5)]
-# anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
-# 
-# obstacles = [obstacle()]
-# plants = [plant("10.42.0.169", 80, 7), plant("10.42.0.140", 80, 8)]
-# icepatches = [ice("10.42.0.163", 81, 4), ice("10.42.0.61", 81, 6)]
-
-robots = [robot("192.168.32.152", 5000, 0), robot("192.168.32.243", 5000, 5)]
+robots = [robot("10.42.0.47", 5000, 0), robot("10.42.0.122", 5000, 5)]
 anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
 
 obstacles = [obstacle()]
-plants = [plant("192.168.32.231", 80, 8), plant("192.168.32.209", 80, 7)]
-icepatches = [ice("192.168.32.118", 81, 4), ice("192.168.32.171", 81, 6)]#, ice("192.168.32.118", 81, 4)]
-base = base("192.168.32.136", 80, 9)
+plants = [plant("10.42.0.169", 80, 7), plant("10.42.0.140", 80, 8)]
+icepatches = [ice("10.42.0.163", 81, 4), ice("10.42.0.61", 81, 6)]
+base = base("10.42.0.46", 80, 9)
+
+# robots = [robot("192.168.32.152", 5000, 0), robot("192.168.32.243", 5000, 5)]
+# anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
+# 
+# obstacles = [obstacle()]
+# plants = [plant("192.168.32.231", 80, 8), plant("192.168.32.209", 80, 7)]
+# icepatches = [ice("192.168.32.118", 81, 4), ice("192.168.32.171", 81, 6)]#, ice("192.168.32.118", 81, 4)]
+# base = base("192.168.32.136", 80, 9)
 
 #
 ###*****     *****###
@@ -227,6 +228,18 @@ async def main():
         if base is not None:
             base.reader, base.writer = await wifi_connect(base.IP, base.port)
             
+    while True:
+        ret, frame = cam.read()
+        if not ret:
+            print("Failed to get camera frame")
+            continue
+        
+        cv2.namedWindow("Setup", cv2.WINDOW_NORMAL)
+        cv2.imshow("Setup", frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    cv2.destroyAllWindows()
+            
     ### initialize tags/positions ###
     # anchors
     while (res := initAnchors(cam, anchors))[0] != 1:
@@ -349,8 +362,13 @@ async def main():
                 break
             
     ### dust storm ###
-    for robot in robots:
-        await stopRobot(robot)
+    start_time = time.perf_counter()
+    while True:
+        current_time = time.perf_counter()
+        if (current_time - start_time > 1.0):
+            break
+        for robot in robots:
+            await stopRobot(robot)
         
     if base is not None:
         for robot in robots:
@@ -366,8 +384,9 @@ async def main():
         for robot in robots:
             robot.target = base
             robot.state = "Base"
-            
-            while (robot.state == "Base"):
+        
+        for robot in robots:    
+            while (robot.state != "None"):
                 err, img = updTagPos(cam, robots, anchors)
                 
                 if robot.state == "None" or robot.state == "Waiting":
@@ -386,10 +405,21 @@ async def main():
                     key = await loop.run_in_executor(None, asyncDisplay, window_name, resized_img)
                     if key == ord('q'):
                         break
+                    
+            start_time = time.perf_counter()
+            while True:
+                current_time = time.perf_counter()
+                if (current_time - start_time > 1.0):
+                    break
+                for robot in robots:
+                    await stopRobot(robot)
         
             await robot.enterBase()
-            await asyncio.sleep(DUSTSTORM_PAUSE)
+            await asyncio.sleep(5)
             await robot.exitBase()
+            await asyncio.sleep(5)
+        
+        await base.reset()
     
     ### loop 2 ###
     assignTargets(robots, icepatches, plants)
