@@ -5,7 +5,7 @@
 #define PORT 80
 
 
-const char* ssid = "StormingKids";
+const char* ssid = "jetson";
 const char* pswd = "todbot1234";
 
 
@@ -50,17 +50,18 @@ WiFiClient client;
 void setup() {
   Serial.begin(115200);
   delay(1000);
-
+  
+  pinMode(LED_BUILTIN, OUTPUT);
 
   /* Wifi stuff */
-  // Serial.printf("Connecting to '%s' with '%s'\n", ssid, pswd);
-  // WiFi.begin(ssid, pswd);
-  // while (WiFi.status() != WL_CONNECTED) {
-  //   Serial.print(".");
-  //   delay(1000);
-  // }
-  // Serial.printf("\nConnected to WiFi\n\nConnect to server at %s:%d\n", WiFi.localIP().toString().c_str(), PORT);
-
+  Serial.printf("Connecting to '%s' with '%s'\n", ssid, pswd);
+  WiFi.begin(ssid, pswd);
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(1000);
+  }
+  Serial.printf("\nConnected to WiFi\n\nConnect to server at %s:%d\n", WiFi.localIP().toString().c_str(), PORT);
+  digitalWrite(LED_BUILTIN, HIGH);
 
 
   server.begin();
