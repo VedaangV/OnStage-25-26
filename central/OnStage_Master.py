@@ -13,13 +13,13 @@ from OnStage_CBF import CBFController, followPath, stopRobot
 # plants = [plant("10.42.0.169", 80, 7), plant("10.42.0.140", 80, 8)]
 # icepatches = [ice("10.42.0.163", 81, 4), ice("10.42.0.61", 81, 6)]
 
-robots = [robot("192.168.32.152", 5000, 0)]#, robot("192.168.32.243", 5000, 5)]
+robots = [robot("192.168.32.152", 5000, 0), robot("192.168.32.243", 5000, 5)]
 anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
 
 obstacles = [obstacle()]
-plants = [plant("192.168.32.231", 80, 8)]#, plant("192.168.32.209", 80, 7)]
-icepatches = [ice("192.168.32.118", 81, 4)]#, ice("192.168.32.171", 81, 6)]#, ice("192.168.32.118", 81, 4)]
-base = base("192.168.32.136", 80, 5)
+plants = [plant("192.168.32.231", 80, 8), plant("192.168.32.209", 80, 7)]
+icepatches = [ice("192.168.32.118", 81, 4), ice("192.168.32.171", 81, 6)]#, ice("192.168.32.118", 81, 4)]
+base = base("192.168.32.136", 80, 9)
 
 #
 ###*****     *****###
@@ -78,19 +78,18 @@ class VideoStream:
         
 cam = VideoStream()
 
-def displayElements(img, anchors, robots, obstacles):
+def displayElements(img, anchors, robots, obstacles, base):
     for robot in robots:
         startpt = (int(robot.coords.x / FIELD_WIDTH * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.coords.y / FIELD_LENGTH * (abs(anchors[0].coords.y - anchors[2].coords.y))))
         endpt = (int((robot.coords.x + robot.Vx) / FIELD_WIDTH * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - (robot.coords.y + robot.Vy) / FIELD_LENGTH * (abs(anchors[0].coords.y - anchors[2].coords.y))))
-        cv2.arrowedLine(img, startpt, endpt, (0, 255, 100), 3)
+        cv2.arrowedLine(img, startpt, endpt, (0, 255, 255), 3)
         
         endpt = (int((robot.coords.x + robot.Vx_act) / FIELD_WIDTH * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - (robot.coords.y + robot.Vy_act) / FIELD_LENGTH * (abs(anchors[0].coords.y - anchors[2].coords.y))))
         cv2.arrowedLine(img, startpt, endpt, (0, 100, 255), 3)
     
         if hasattr(robot, "target") and hasattr(robot.target, "coords"):
             cv2.circle(img, (int(robot.target.coords.x / FIELD_WIDTH * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.target.coords.y / FIELD_LENGTH * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 5, (255, 255, 0), -1)    
-    
-    print(obstacles)
+
     for obs in obstacles:
         pts = np.array(obs.border)
         for i in range(len(pts)):
@@ -98,6 +97,10 @@ def displayElements(img, anchors, robots, obstacles):
             pts[i][1] = anchors[2].coords.y - pts[i][1] / FIELD_LENGTH * (abs(anchors[0].coords.y - anchors[2].coords.y))
         pts = pts.astype(np.int32)
         cv2.polylines(img, [pts], isClosed=True, color=(0, 0, 255), thickness=2)
+    
+    if base is not None:
+        cv2.circle(img, (int(base.coords.x / FIELD_WIDTH * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - base.coords.y / FIELD_LENGTH * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 5, (255, 0, 150), -1)
+        
     return img
     
 def assignTargets(robots, icepatches, plants): # system = plants or ice
@@ -169,7 +172,7 @@ def assignTargets(robots, icepatches, plants): # system = plants or ice
 
 def resizeFSCRN(img):
     #resize 640x480 image by factor of 1080/480
-    img = cv2.resize(img, None, fx=round(WIN_FSCRN_HEIGHT/WIN_HEIGHT, 2), fy=round(WIN_FSCRN_HEIGHT/WIN_HEIGHT, 2)) 
+    img = cv2.resize(img, None, fx=round(WIN_FSCRN_HEIGHT/WIN_HEIGHT, 3), fy=round(WIN_FSCRN_HEIGHT/WIN_HEIGHT, 3)) 
 
     # 3. Create a solid black canvas matching the screen size
     canvas = np.zeros((WIN_FSCRN_HEIGHT, WIN_FSCRN_WIDTH, 3), dtype=np.uint8)
@@ -177,20 +180,20 @@ def resizeFSCRN(img):
     # 4. Define the position (Y, X coordinates) where you want the top-left corner of the image
     # Example: Positioning the image to be perfectly centered
     y_offset = (WIN_FSCRN_HEIGHT - WIN_FSCRN_HEIGHT) // 2
-    x_offset = (WIN_FSCRN_WIDTH - WIN_FSCRN_HEIGHT) // 2
+    x_offset = (WIN_FSCRN_WIDTH - int(WIN_WIDTH*WIN_FSCRN_HEIGHT/WIN_HEIGHT)) // 2
 
     # Ensure the image fits within the bounds of your canvas coordinates
     y_end = min(y_offset + WIN_FSCRN_HEIGHT, WIN_FSCRN_HEIGHT)
-    x_end = min(x_offset + WIN_FSCRN_HEIGHT, WIN_FSCRN_WIDTH)
+    x_end = min(x_offset + int(WIN_WIDTH*WIN_FSCRN_HEIGHT/WIN_HEIGHT), WIN_FSCRN_WIDTH)
 
     # 5. Copy the image onto the canvas 
     canvas[y_offset:y_end, x_offset:x_end] = img[:y_end-y_offset, :x_end-x_offset]
     return canvas
 
 def asyncDisplay(window_name, frame):
-    cv2.namedWindow("Setup", cv2.WINDOW_NORMAL)
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
     cv2.setWindowProperty(window_name, cv2.WND_PROP_TOPMOST, 1)
-    cv2.setWindowProperty("Setup", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+    cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
     cv2.imshow(window_name, frame)
     key = cv2.waitKey(1) & 0xFF
     return key
@@ -284,10 +287,15 @@ async def main():
                 obstacles.pop(i)
             else:
                 i = i + 1
+                
+    for ice in icepatches:
+        await ice.reset()
+    for plant in plants:
+        await plant.reset()
+    if base is not None:
+        await base.reset()
     
     print(f"Base: {base.coords.x:.2f}, {base.coords.y:.2f}")
-    print(f"{base.entrances[0].coords.x:.2f}, {base.entrances[0].coords.y:.2f}")
-    print(f"{base.entrances[1].coords.x:.2f}, {base.entrances[1].coords.y:.2f}")
     input("Press Enter to start: ")
     cv2.destroyAllWindows()
     
@@ -333,55 +341,59 @@ async def main():
                     assignTargets(robots, icepatches, plants)
         
         if (err != -1):
-            img = displayElements(img, anchors, robots, obstacles)
+            img = displayElements(img, anchors, robots, obstacles, base)
             resized_img = resizeFSCRN(img)
             
-            key = await loop.run_in_executor(None, asyncDisplay, window_name, img)
+            key = await loop.run_in_executor(None, asyncDisplay, window_name, resized_img)
             if key == ord('q'):
                 break
             
     ### dust storm ###
+    for robot in robots:
+        await stopRobot(robot)
+        
     if base is not None:
-        await base.dustStorm()
         for robot in robots:
             await robot.dustStorm()
-        for idx, robot in enumerate(robots):
-            if idx > 1:
-                break
-            robot.target = base.entrances[idx]
-            robot.state == "Base"
-        
-        while any(robot.state != "None" for robot in robots):
-            err, img = updTagPos(cam, robots, anchors)
             
-            for robot in robots:
+        for plant in plants:
+            plant.available = True
+        for ice in icepatches:
+            ice.available = True
+        
+        await base.dustStorm()
+        
+        for robot in robots:
+            robot.target = base
+            robot.state = "Base"
+            
+            while (robot.state == "Base"):
+                err, img = updTagPos(cam, robots, anchors)
+                
                 if robot.state == "None" or robot.state == "Waiting":
                     await stopRobot(robot)
                 else:
-                    finished = await followPath(cbf, robot, robots, obstacles, 0.1)
-                    if finished == True:
-                        await stopRobot(robot)
+                    f = await followPath(cbf, robot, robots, obstacles, 0.3)
+                    if f == True or (robot.Vx == 0 and robot.Vy == 0):
                         robot.state = "None"
                         robot.target = None
-                        
-            if (err != -1):
-                img = displayElements(img, anchors, robots, obstacles)
-                resized_img = resizeFSCRN(img)
-                
-                key = await loop.run_in_executor(None, asyncDisplay, window_name, img)
-                if key == ord('q'):
-                    break
+                        await stopRobot(robot)
+                            
+                if (err != -1):
+                    img = displayElements(img, anchors, robots, obstacles, base)
+                    resized_img = resizeFSCRN(img)
+                    
+                    key = await loop.run_in_executor(None, asyncDisplay, window_name, resized_img)
+                    if key == ord('q'):
+                        break
         
-#         robot[0].enterBase(base.rotation)
-#         robot[1].enterBase(base.rotation)
-        
-        await asyncio.sleep(DUSTSTORM_PAUSE)
-        
-        base.normal()
-#         robot[0].exitBase()
-#         robot[1].exitBase()
+            await robot.enterBase()
+            await asyncio.sleep(DUSTSTORM_PAUSE)
+            await robot.exitBase()
     
     ### loop 2 ###
+    assignTargets(robots, icepatches, plants)
+    
     while True:
         err, img = updTagPos(cam, robots, anchors)
         
@@ -411,10 +423,10 @@ async def main():
                     assignTargets(robots, icepatches, plants)
         
         if (err != -1):
-            img = displayElements(img, anchors, robots, obstacles)
+            img = displayElements(img, anchors, robots, obstacles, base)
             resized_img = resizeFSCRN(img)
             
-            key = await loop.run_in_executor(None, asyncDisplay, window_name, img)
+            key = await loop.run_in_executor(None, asyncDisplay, window_name, resized_img)
             if key == ord('q'):
                 break
     
