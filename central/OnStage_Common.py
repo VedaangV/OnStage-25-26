@@ -18,6 +18,7 @@ import cv2
 module_dir = os.path.abspath('/home/pi/onstage/python/apriltag/lib/python3.11/site-packages')
 sys.path.append(module_dir)
 import apriltag
+import transforms3d as t3d
 
 from munkres import Munkres, print_matrix
 
@@ -28,18 +29,18 @@ from OnStage_WifiComms import *
 ENABLE_WIFI = True
 ENABLE_SOUND = False
 FIELD_WIDTH = 4.5 #ft
-FIELD_LENGTH = 5.5 #ft
+FIELD_LENGTH = 4.5 #ft
 
 #_Common.py
 ICE_LEVEL = 4
 PLANT_LEVEL = 4
 
 #_Master.py
-DUSTSTORM_ACTIVATION_TIME = 10 # seconds
+DUSTSTORM_ACTIVATION_TIME = 15 # seconds
 DUSTSTORM_PAUSE = 5 # seconds
 CBF_GAMMA = 2.0 #CBF aggressiveness — raise if robots get too close to obstacles/each other
 CBF_KATT = 1.2 #waypoint attraction strength
-CBF_SAFETYMARGIN = 0.1 #extra clearance in field units (on top of robot + obstacle radii)
+CBF_SAFETYMARGIN = 0 #extra clearance in field units (on top of robot + obstacle radii)
 CAMERA_TYPE = "usb"
 CAMERA_CONTRAST = 1.0
 CAMERA_BRIGHTNESS = -40
@@ -50,13 +51,13 @@ WIN_HEIGHT = 480
 
 #_CBF.py
 ROBOT_RADIUS     = 0.37 #ft
-DIST_THRESHOLD   = 0.40 #ft #how from target to count as successful
+DIST_THRESHOLD   = 0.6 #ft #how from target to count as successful
 MAX_SPEED        = 0.4 #ft/s
 MIN_SPEED        = 0.4 #ft/s
 
 #_Rcoords.py
 CANNY_LBOUND = 150
-CANNY_UBOUND = 180
+CANNY_UBOUND = 255
 AREA_MINIMUM = 5 #minimum area of contour to be considered an obstacle
 AREA_MAXIMUM = 10000 #maximum area of contour to be considered an obstacle
 
@@ -107,7 +108,7 @@ class robot:
     async def dustStorm(self):
         if ENABLE_WIFI == True:
             await wifi_write(self.writer, "dust")
-    async def enterBase(self, direction):
+    async def enterBase(self):
         if ENABLE_WIFI == True:
             await wifi_write(self.writer, "enter")
     async def exitBase(self):
@@ -147,7 +148,12 @@ class plant:
             self.level += 1
             if ENABLE_WIFI == True:
                 await wifi_write(self.writer, "G")
-
+    async def reset(self):
+        self.level = 0
+        self.available = True
+        if ENABLE_WIFI == True:
+            await wifi_write(self.writer, "R")
+        
 class ice:
     tag: int
     IP: str
@@ -169,13 +175,15 @@ class ice:
             self.level -= 1
             if ENABLE_WIFI == True:
                 await wifi_write(self.writer, "D")
+    async def reset(self):
+        self.level = ICE_LEVEL
+        self.available = True
+        if ENABLE_WIFI == True:
+            await wifi_write(self.writer, "R")
 
 class entrance:
     coords: Point = Point(-1, -1)
-    available: bool = True
-    
-    def __init__(self):
-        pass
+    available = True
     
 class base:
     tag: int
@@ -184,7 +192,6 @@ class base:
     reader = None
     writer = None
     coords: Point = Point(-1, -1)
-    entrances = [entrance(), entrance()]
     
     def __init__(self, IP, port, tag):
         self.IP = IP
@@ -192,7 +199,7 @@ class base:
         self.tag = tag
     async def dustStorm(self):
         if ENABLE_WIFI == True:
-            await wifi_write(self.writer, "a")
-    async def normal(self):
+            await wifi_write(self.writer, "S")
+    async def reset(self):
         if ENABLE_WIFI == True:
-            await wifi_write(self.writer, "d")
+            await wifi_write(self.writer, "T")
