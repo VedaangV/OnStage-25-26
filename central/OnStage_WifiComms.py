@@ -5,7 +5,7 @@ import time
 
 data_queue = asyncio.Queue()
 
-async def wifi_connect(host: str, port: int, timeout: float = 5.0):
+async def wifi_connect(host: str, port: int, timeout: float = 10.0):
     reader, writer = None, None
     try:
         # Wrap the connection attempt with an explicit timeout
