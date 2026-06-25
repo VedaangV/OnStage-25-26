@@ -40,8 +40,10 @@ def displayTags(results, img):
         cv2.circle(img, (cX, cY), 5, (0, 0, 255), -1)
         # draw tag family
         tagFamily = r.tag_family.decode("utf-8")
-#         cv2.putText(img, (str(r.tag_id) + " " + tagFamily), (ptA[0], ptA[1] - 15),
-#             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        cv2.putText(img, ("A"), (ptA[0], ptA[1]),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        cv2.putText(img, ("B"), (ptB[0], ptB[1]),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
     return img
     
 def initAnchors(cam, anchors):
@@ -117,10 +119,10 @@ def updObsPos(cam, obstacles, anchors):
     
     ### canny edge detection ###
     frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    frame_gray_blurred = cv2.GaussianBlur(frame_gray, (3,3), 0)
+    frame_gray_blurred = cv2.GaussianBlur(frame_gray, (5,5), 5)
     frame_threshold = cv2.Canny(frame_gray, CANNY_LBOUND, CANNY_UBOUND) #160, 255
     
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
     frame_threshold = cv2.dilate(frame_threshold, kernel, iterations=1)
     frame_threshold = cv2.morphologyEx(frame_threshold, cv2.MORPH_CLOSE, kernel)
     
@@ -206,21 +208,18 @@ def updBasePos(cam, base, anchors):
         if (base.tag == r.tag_id):
             p = Point(r.center[0], r.center[1])
             (ptA, ptB, ptC, ptD) = r.corners
-            ptB = (int(ptB[0]), int(ptB[1]))
-            ptC = (int(ptC[0]), int(ptC[1]))
-            ptD = (int(ptD[0]), int(ptD[1]))
-            ptA = (int(ptA[0]), int(ptA[1]))
-            
-            rotation = -math.atan(ptA[1] - ptB[1]/ptA[0]-ptB[0])
+            ptA = Point(int(ptA[0]), int(ptA[1]))
             
             p = convertPos(p, anchors[0].coords, anchors[1].coords, anchors[2].coords)
+            ptA = convertPos(ptA, anchors[0].coords, anchors[1].coords, anchors[2].coords)
+            angle_rad = math.atan2((p.y - ptA.y), (p.x-ptA.x)) + math.pi/4
             
-            p1 = Point(p.x - math.cos(rotation)*ROBOT_RADIUS, p.y - math.sin(rotation)*ROBOT_RADIUS)
-            p2 = Point(p1.x - math.sin(rotation)*ROBOT_RADIUS, p1.y + math.cos(rotation)*ROBOT_RADIUS)
+            print(angle_rad)
+            
+            p = Point(p.x + math.cos(angle_rad+math.pi/2)*(-2.5*ROBOT_RADIUS), p.y + math.sin(angle_rad+math.pi/2)*(-2.5*ROBOT_RADIUS))
+            p = Point(p.x + math.cos(angle_rad+math.pi)*(1.5*ROBOT_RADIUS), p.y + math.sin(angle_rad+math.pi)*(1.5*ROBOT_RADIUS))
             
             base.coords = p
-            base.entrances[0].coords = p1
-            base.entrances[1].coords = p2
             break
             
     rgb = displayTags(results, rgb)
