@@ -229,10 +229,12 @@ async def wifi_read_velocity(robot):
     text = await wifi_read(robot.reader)
     matches = re.findall(r"[-+]?\d+\.\d+", text)
     floats = [float(num) for num in matches]
-    robot.Vx_act = floats[0]
-    robot.Vy_act = floats[1]
+    if (len(floats) >= 2):
+        robot.Vx_act = floats[0]
+        robot.Vy_act = floats[1]
 
 _current_task: asyncio.Task | None = None
+_all_tasks = []
 async def followPath(cbf, robot, all_robots, obstacles, threshold = DIST_THRESHOLD):
     global _current_task
     if robot.coords.distance_to(robot.target.coords) < threshold:
@@ -246,7 +248,7 @@ async def followPath(cbf, robot, all_robots, obstacles, threshold = DIST_THRESHO
         await wifi_write(robot.writer, f"vx: {Vx:.3f}, vy: {Vy:.3f}\n")
         if _current_task is None or _current_task.done():
             _current_task = asyncio.create_task(wifi_read_velocity(robot))
-                
+    
     return False
 
 async def stopRobot(robot):
@@ -396,7 +398,7 @@ if __name__ == "__main__":
     # Simulation parameters                                               #
     # ------------------------------------------------------------------ #
     
-    f = 0.05
+    f = 0.1
     SIM_FIELD       = int(80*f)
     SIM_DT          = 0.05
     STEPS_PER_FRAME = 3
@@ -414,13 +416,13 @@ if __name__ == "__main__":
 
         elif name == "cluttered":
             r = [SimRobot(int(10*f), int(20*f), int(70*f), int(60*f), 0), SimRobot(int(10*f), int(60*f), int(70*f), int(20*f), 1)]
-            o = [SimObstacle(int(35*f), int(40*f), 5), SimObstacle(int(45*f), int(30*f), 4),
-                 SimObstacle(int(45*f), int(50*f), 4), SimObstacle(int(55*f), int(40*f), 5)]
+            o = [SimObstacle(int(35*f), int(40*f), int(5*math.sqrt(f))), SimObstacle(int(45*f), int(30*f), int(4*math.sqrt(f))),
+                 SimObstacle(int(45*f), int(50*f), int(4*math.sqrt(f))), SimObstacle(int(55*f), int(40*f), int(5*math.sqrt(f)))]
             
         elif name == "onstage":
             r = [SimRobot(int(10*f), int(20*f), int(70*f), int(60*f), 0), SimRobot(int(10*f), int(60*f), int(70*f), int(20*f), 1)]
-            o = [SimObstacle(int(35*f), int(40*f), 5), SimObstacle(int(45*f), int(30*f), 4),
-                 SimObstacle(int(45*f), int(50*f), 4), SimObstacle(int(55*f), int(40*f), 5)]
+            o = [SimObstacle(int(35*f), int(40*f), int(5*math.sqrt(f))), SimObstacle(int(45*f), int(30*f), int(4*math.sqrt(f))),
+                 SimObstacle(int(45*f), int(50*f), int(4*math.sqrt(f))), SimObstacle(int(55*f), int(40*f), int(5*math.sqrt(f)))]
 
         elif name == "circle":
             N, R = 5, int(28*f)
