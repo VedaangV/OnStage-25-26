@@ -40,10 +40,6 @@ def displayTags(results, img):
         cv2.circle(img, (cX, cY), 5, (0, 0, 255), -1)
         # draw tag family
         tagFamily = r.tag_family.decode("utf-8")
-        cv2.putText(img, ("A"), (ptA[0], ptA[1]),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        cv2.putText(img, ("B"), (ptB[0], ptB[1]),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
     return img
     
 def initAnchors(cam, anchors):
@@ -217,7 +213,7 @@ def updBasePos(cam, base, anchors):
             print(angle_rad)
             
             p = Point(p.x + math.cos(angle_rad+math.pi/2)*(-2.5*ROBOT_RADIUS), p.y + math.sin(angle_rad+math.pi/2)*(-2.5*ROBOT_RADIUS))
-            p = Point(p.x + math.cos(angle_rad+math.pi)*(1.5*ROBOT_RADIUS), p.y + math.sin(angle_rad+math.pi)*(1.5*ROBOT_RADIUS))
+            p = Point(p.x + math.cos(angle_rad+math.pi)*(1.25*ROBOT_RADIUS), p.y + math.sin(angle_rad+math.pi)*(1.25*ROBOT_RADIUS))
             
             base.coords = p
             break
