@@ -28,7 +28,7 @@ from OnStage_WifiComms import *
 ### constants ###
 ENABLE_WIFI = True
 ENABLE_SOUND = False
-FIELD_WIDTH = 4.5 #ft
+FIELD_WIDTH = 7 #ft
 FIELD_LENGTH = 4.5 #ft
 
 #_Common.py
@@ -37,9 +37,9 @@ PLANT_LEVEL = 4
 
 #_Master.py
 DUSTSTORM_ACTIVATION_TIME = 40 # seconds
-CBF_GAMMA = 2.0 #CBF aggressiveness — raise if robots get too close to obstacles/each other
+CBF_GAMMA = 0.8 #CBF aggressiveness — raise if robots get too close to obstacles/each other
 CBF_KATT = 1.2 #waypoint attraction strength
-CBF_SAFETYMARGIN = 0 #extra clearance in field units (on top of robot + obstacle radii)
+CBF_SAFETYMARGIN = 0.1 #extra clearance in field units (on top of robot + obstacle radii)
 CAMERA_TYPE = "usb"
 CAMERA_CONTRAST = 1.0
 CAMERA_BRIGHTNESS = -40
@@ -50,7 +50,7 @@ WIN_HEIGHT = 480
 
 #_CBF.py
 ROBOT_RADIUS     = 0.37 #ft
-DIST_THRESHOLD   = 0.6 #ft #how from target to count as successful
+DIST_THRESHOLD   = 0.5 #ft #how from target to count as successful
 MAX_SPEED        = 0.4 #ft/s
 MIN_SPEED        = 0.4 #ft/s
 
@@ -202,3 +202,4 @@ class base:
     async def reset(self):
         if ENABLE_WIFI == True:
             await wifi_write(self.writer, "T")
+
