@@ -9,7 +9,7 @@
 #define ENABLE_WIFI
 
 WiFiServer server(5000); 
-const char* ssid = "StormingKids";
+const char* ssid = "jetson";
 const char* password = "todbot1234";
 
 float vx = 0.0;
@@ -125,13 +125,35 @@ void loop() {
             } 
             delay(1000);
           }
+          else if (inputBuffer.indexOf("enter") != -1) {
+            inputBuffer = "";
+            motor(0,0,0);
+            delay(500);
+            for (int i = 0; i < 750; i++) {
+              vmotor(0, -0.4);
+              delay(1);
+            }
+            motor(0,0,0);
+            delay(1000);
+          }
+          else if (inputBuffer.indexOf("exit") != -1) {
+            inputBuffer = "";
+            motor(0,0,0);
+            delay(500);
+            for (int i = 0; i < 1000; i++) {
+              vmotor(0, 0.4);
+              delay(1);
+            }
+            motor(0,0,0);
+            delay(500);
+            for (int i = 0; i < 1500; i++) {
+              vmotor(0, 0.4);
+              delay(1);
+            }
+            motor(0,0,0);
+            delay(1000);
+          }
           else {
-            if (haswater == true) {
-            
-            }
-            else {
-
-            }
             parseVelocity(inputBuffer);
             Serial.println(vx);
             Serial.println(vy);
