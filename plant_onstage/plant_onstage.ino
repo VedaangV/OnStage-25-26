@@ -3,7 +3,7 @@
 
 #define PORT 80
 
-const char* ssid = "StormingKids";
+const char* ssid = "jetson";
 const char* pswd = "todbot1234";
 
 const int ENA = 14; // encoder 1
@@ -24,14 +24,8 @@ int cmap(int val, int olow, int ohigh, int mlow, int mhigh) {
 }
 
 float encoderPos = 0;
-
-const double gearDiameter = 5.1; // cm
-const double TPR = 960; // 960 ticks per revolution
-
-double circumference = gearDiameter*PI;
-
-const double ENCODER_TO_POS_RATIO = circumference/TPR;
-const float STAGE_HEIGHT = 2.5; // cm
+const float stage_encoders = 160;
+float current_encoders = 0;
 
 //motor speed
 void Motor::speed(int val) {
@@ -83,24 +77,18 @@ void setup() {
 
 }
 
-float calcDisplacement() {
-  return encoderPos * ENCODER_TO_POS_RATIO;
-}
-
 void growth() {
-  plant.speed(60);
-  float initialDisplacement = calcDisplacement();
-  float disp = 0;
-  int loops = 0;
-  while (disp < STAGE_HEIGHT) {
-    disp = abs(initialDisplacement-calcDisplacement());
+  plant.speed(30);
+  while (encoderPos < (current_encoders + stage_encoders)) {
     delay(2);
   }
   plant.speed(0);
+  current_encoders = encoderPos;
 }
 
 void loop() {
-  /* Testing w/ wifi*/ 
+  //main
+  Serial.printf("\nConnected to WiFi\n\nConnect to server at %s:%d\n", WiFi.localIP().toString().c_str(), PORT);
   client = server.accept();
   if (client) {
     while (client.connected()) {
@@ -114,17 +102,5 @@ void loop() {
     client.stop();
     Serial.println("Client disconnected");
   }
-  /* Testing w/out wifi */
-  // if ((int)round(millis()) % 2000 == 0) {
-  //   Serial.printf("Encoder data: %d %d -> %lf\n", digitalRead(ENA), digitalRead(ENB), encoderPos);
-  //   Serial.printf("Actual position: %f cm\n", encoderPos * ENCODER_TO_POS_RATIO);
-  // }
-  // bool run = false;
-  // while (Serial.available()) {
-  //   run = true;
-  //   Serial.read();
-  // }
-  // if (run) growth();
-  // growth();
-  // delay(5000);
+
 }
