@@ -12,7 +12,7 @@ anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
 obstacles = [obstacle()]
 plants = [plant("10.42.0.169", 80, 7), plant("10.42.0.140", 80, 8)]
 icepatches = [ice("10.42.0.163", 81, 4), ice("10.42.0.61", 81, 6)]
-base = base("10.42.0.46", 80, 9)
+base = base("10.42.0.213", 80, 9)
 
 # robots = [robot("192.168.32.152", 5000, 0), robot("192.168.32.243", 5000, 5)]
 # anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
