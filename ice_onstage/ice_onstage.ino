@@ -4,7 +4,7 @@
 
 #define PORT 81
 
-const char* ssid = "StormingKids";
+const char* ssid = "jetson";
 const char* pswd = "todbot1234";
 
 WiFiServer server(PORT);
@@ -52,24 +52,21 @@ void deplete() {
   delay(100);
 }
 
-void loop() {
+void reset() {
   num_active = PIXEL_COUNT;
   for(int i = 0; i < PIXEL_COUNT; i++) {
     ring.setPixelColor(i, ring.Color(0, 0, 125, 175));
   } 
   ring.show();
+}
 
-  //*** testing ***//
-  // delay(1000);
-  // for(int i = 0; i < levels; i++) {
-  //   deplete();
-  //   delay(1000);
-  // }
-  // for(int i = 0; i < PIXEL_COUNT; i++) {
-  //   ring.setPixelColor(i, ring.Color(0, 0, 0, 0));
-  // } 
-  // while(1);
-  //*** testing ***//
+void loop() {
+  Serial.printf("\nConnected to WiFi\n\nConnect to server at %s:%d\n", WiFi.localIP().toString().c_str(), PORT);
+  num_active = PIXEL_COUNT;
+  for(int i = 0; i < PIXEL_COUNT; i++) {
+    ring.setPixelColor(i, ring.Color(0, 0, 125, 175));
+  } 
+  ring.show();
 
   //main process
   client = server.accept();
@@ -80,6 +77,9 @@ void loop() {
       Serial.printf("%c\n", req);
       if (req == 'D') {
         deplete();
+      }
+      else if (req == 'R') {
+        reset();
       }
     }
     client.stop();
