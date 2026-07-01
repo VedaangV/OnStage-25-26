@@ -25,9 +25,9 @@ channels = {
 }
 
 audios = {
-    "bg": pygame.mixer.Sound("BG_MUSIC.mp3"),
-    "mining": pygame.mixer.Sound("MINING.wav"),
-    "watering": pygame.mixer.Sound("WATERING.mp3")
+    "bg": pygame.mixer.Sound("/home/vedaang/onstage/BG_MUSIC.mp3"),
+    "mining": pygame.mixer.Sound("/home/vedaang/onstage/MINING.wav"),
+    "watering": pygame.mixer.Sound("/home/vedaang/onstage/WATERING.mp3")
 }
 
 def play_sound(channel, name):
