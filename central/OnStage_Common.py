@@ -35,14 +35,15 @@ FIELD_WIDTH = 7 #ft
 FIELD_LENGTH = 4.5 #ft
 
 #_Common.py
-ICE_LEVEL = 8
-PLANT_LEVEL = 8
+ICE_LEVEL = 6
+PLANT_LEVEL = 6
 
 #_Master.py
-DISPLAY_TYPE = "imshow"
+DISPLAY_TYPE = "hdmi"  # imshow/local/hdmi  ssh/imagezmq  none
+DISPLAY_SCALE = "fullscreen"
 PC_IP = "10.42.0.43"
 
-DUSTSTORM_ACTIVATION_TIME = 5 # seconds
+DUSTSTORM_ACTIVATION_TIME = 43 # seconds
 
 CBF_GAMMA = 0.7 #CBF aggressiveness — raise if robots get too close to obstacles/each other
 CBF_KATT = 1.2 #waypoint attraction strength
@@ -50,7 +51,7 @@ CBF_SAFETYMARGIN = 0 #extra clearance in field units (on top of robot + obstacle
 
 CAMERA_TYPE = "usb"
 CAMERA_CONTRAST = 1.0
-CAMERA_BRIGHTNESS = -40
+CAMERA_BRIGHTNESS = -50
 WIN_FSCRN_WIDTH = 1920
 WIN_FSCRN_HEIGHT = 1080
 WIN_WIDTH = 640
@@ -135,6 +136,9 @@ class robot:
             reply = ""
             while reply != "done":
                 reply = await wifi_read(self.reader)
+    async def end(self):
+        if ENABLE_WIFI == True:
+            await wifi_write(self.writer, "end", True)
 
 class anchor:
     tag: int
