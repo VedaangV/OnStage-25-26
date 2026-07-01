@@ -212,9 +212,9 @@ def updBasePos(cam, base, anchors):
             
             print(angle_rad)
             
-            p1 = Point(p.x + 0.5, p.y + 0.75)
+            p1 = Point(p.x + 0.7, p.y + 0.75)
             
-            p2 = Point(p.x + 1.5, p.y + 0.75)
+            p2 = Point(p.x + 1.3, p.y + 0.75)
             
             base.coords = p
             base.entrances[0].coords = p1
