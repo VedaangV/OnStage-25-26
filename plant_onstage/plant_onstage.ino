@@ -24,7 +24,7 @@ int cmap(int val, int olow, int ohigh, int mlow, int mhigh) {
 }
 
 float encoderPos = 0;
-const float stage_encoders = 160;
+const float stage_encoders = 120; // 160;
 float current_encoders = 0;
 
 //motor speed
