@@ -98,6 +98,10 @@ void loop() {
       if (client.available()) { // If there is data available to read
         char c = client.read(); // Read a character
         if (c == '\n') {
+          if(inputBuffer.indexOf("stop") != -1){
+            inputBuffer = "";
+            motor(0,0,0);
+          }
           if(inputBuffer.indexOf("deplete") != -1){
             inputBuffer = "";
             motor(0,0,0);
@@ -115,7 +119,6 @@ void loop() {
           else if (inputBuffer.indexOf("dust") != -1) {
             inputBuffer = "";
             motor(0,0,0);
-            delay(500);
             resetNPixel();
             for(int i = 0; i < 4; i++) {
               resetNPixel();
@@ -127,33 +130,35 @@ void loop() {
           }
           else if (inputBuffer.indexOf("enter") != -1) {
             inputBuffer = "";
-            motor(0,0,0);
-            delay(500);
-            for (int i = 0; i < 750; i++) {
+            for (int i = 0; i < 600; i++) {
               vmotor(0, -0.4);
               delay(1);
             }
             motor(0,0,0);
-            delay(1000);
+            client.println("done");
           }
           else if (inputBuffer.indexOf("exit") != -1) {
             inputBuffer = "";
-            motor(0,0,0);
-            delay(500);
-            for (int i = 0; i < 1000; i++) {
+            for (int i = 0; i < 700; i++) {
               vmotor(0, 0.4);
               delay(1);
             }
             motor(0,0,0);
-            delay(500);
-            for (int i = 0; i < 1500; i++) {
-              vmotor(0, 0.4);
-              delay(1);
+            if (haswater == true) {
+              fillNPixel(ICEBLUE);
             }
-            motor(0,0,0);
-            delay(1000);
+            else {
+              fillNPixel(WHITE);
+            }
+            client.println("done");
           }
-          else {
+          else if (inputBuffer.indexOf("end") != -1) {
+            inputBuffer = "";
+            motor(0,0,0);
+            wipeNPixel(3000, WHITE, GREEN);
+            delay(500);
+          }
+          else if (inputBuffer.indexOf("v") != -1) {
             parseVelocity(inputBuffer);
             Serial.println(vx);
             Serial.println(vy);
@@ -161,6 +166,12 @@ void loop() {
             vmotor(vx, vy, &vx_act, &vy_act); 
             String str = String(vx_act) + ", " + String(vy_act);
             client.println(str);
+            vx_act = 0;
+            vy_act = 0;
+          }
+          else {
+            inputBuffer = "";
+            motor(0, 0, 0);
           }
         } 
         else {
