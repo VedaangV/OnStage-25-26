@@ -1,7 +1,7 @@
 ### import subfiles ###
 from OnStage_Common import *
 from OnStage_Rcoords import updTagPos, updObsPos, updBasePos, initAnchors
-from OnStage_CBF import CBFController, followPath, stopRobot
+from OnStage_CBF import CBFController, followPath
 
 ###***** CLASS ARRAYS, CHANGE DEPENDING ON SETUP *****###
 #
@@ -77,7 +77,11 @@ class VideoStream:
         self.running = False
         self.cap.release()
         
+# Camera object
 cam = VideoStream()
+# ImageZMQ from Jetson to PC
+sender = imagezmq.ImageSender(connect_to=f"tcp://{PC_IP}:5555")
+jetson_name = "jetson"
 
 def displayElements(img, anchors, robots, obstacles, base):
     for robot in robots:
@@ -100,7 +104,8 @@ def displayElements(img, anchors, robots, obstacles, base):
         cv2.polylines(img, [pts], isClosed=True, color=(0, 0, 255), thickness=2)
     
     if base is not None:
-        cv2.circle(img, (int(base.coords.x / FIELD_WIDTH * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - base.coords.y / FIELD_LENGTH * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 5, (255, 0, 150), -1)
+        for entrance in base.entrances:
+            cv2.circle(img, (int(entrance.coords.x / FIELD_WIDTH * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - entrance.coords.y / FIELD_LENGTH * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 5, (255, 0, 150), -1)
         
     return img
     
@@ -162,7 +167,6 @@ def assignTargets(robots, icepatches, plants): # system = plants or ice
         
         total = 0
         for row, column in indexes:
-            print(f"working {row} {column}")
             want_plant[row].target = freeplant[column] 
             freeplant[column].available = False
             want_plant[row].state = "Plant"
@@ -171,33 +175,18 @@ def assignTargets(robots, icepatches, plants): # system = plants or ice
                 r.state = "Waiting"
     return
 
-def resizeFSCRN(img):
-    #resize 640x480 image by factor of 1080/480
-    img = cv2.resize(img, None, fx=round(WIN_FSCRN_HEIGHT/WIN_HEIGHT, 3), fy=round(WIN_FSCRN_HEIGHT/WIN_HEIGHT, 3)) 
-
-    # 3. Create a solid black canvas matching the screen size
-    canvas = np.zeros((WIN_FSCRN_HEIGHT, WIN_FSCRN_WIDTH, 3), dtype=np.uint8)
-
-    # 4. Define the position (Y, X coordinates) where you want the top-left corner of the image
-    # Example: Positioning the image to be perfectly centered
-    y_offset = (WIN_FSCRN_HEIGHT - WIN_FSCRN_HEIGHT) // 2
-    x_offset = (WIN_FSCRN_WIDTH - int(WIN_WIDTH*WIN_FSCRN_HEIGHT/WIN_HEIGHT)) // 2
-
-    # Ensure the image fits within the bounds of your canvas coordinates
-    y_end = min(y_offset + WIN_FSCRN_HEIGHT, WIN_FSCRN_HEIGHT)
-    x_end = min(x_offset + int(WIN_WIDTH*WIN_FSCRN_HEIGHT/WIN_HEIGHT), WIN_FSCRN_WIDTH)
-
-    # 5. Copy the image onto the canvas 
-    canvas[y_offset:y_end, x_offset:x_end] = img[:y_end-y_offset, :x_end-x_offset]
-    return canvas
-
 def asyncDisplay(window_name, frame):
-    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-    cv2.setWindowProperty(window_name, cv2.WND_PROP_TOPMOST, 1)
-    cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-    cv2.imshow(window_name, frame)
-    key = cv2.waitKey(1) & 0xFF
-    return key
+    if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+        cv2.imshow(window_name, frame)
+        stop = cv2.waitKey(1) & 0xFF == ord('q')
+    else:
+        reply = sender.send_image(jetson_name, frame)
+        reply = reply.decode('utf-8')
+        if reply == "STOP":
+            stop = True
+        else:
+            stop = False
+    return stop
             
 ### main ###
 async def main():
@@ -211,11 +200,17 @@ async def main():
             print("Failed to get camera frame")
             continue
         
-        cv2.namedWindow("Setup", cv2.WINDOW_NORMAL)
-        cv2.imshow("Setup", frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-    cv2.destroyAllWindows()
+        if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+            cv2.imshow("Setup", frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        else:
+            reply = sender.send_image(jetson_name, frame)
+            reply = reply.decode('utf-8')
+            if reply == "STOP":
+                break
+    if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+        cv2.destroyAllWindows()
     
     ### initialize wifi ###
     if ENABLE_WIFI == True:
@@ -234,11 +229,17 @@ async def main():
             print("Failed to get camera frame")
             continue
         
-        cv2.namedWindow("Setup", cv2.WINDOW_NORMAL)
-        cv2.imshow("Setup", frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-    cv2.destroyAllWindows()
+        if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+            cv2.imshow("Setup", frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        else:
+            reply = sender.send_image(jetson_name, frame)
+            reply = reply.decode('utf-8')
+            if reply == "STOP":
+                break
+    if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+        cv2.destroyAllWindows()
             
     ### initialize tags/positions ###
     # anchors
@@ -247,9 +248,15 @@ async def main():
             print(f"Anchor {i}: {anchors[i].coords.x:.2f} {anchors[i].coords.y:.2f}") #testing#
         print("") #testing#
         img = res[1]
-        cv2.imshow("Testing", img)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+            cv2.imshow("Testing", img)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        else:
+            reply = sender.send_image(jetson_name, frame)
+            reply = reply.decode('utf-8')
+            if reply == "STOP":
+                break
     
     # plants, ice, robots
     while(res := updTagPos(cam, plants, anchors))[0] != 1:
@@ -257,40 +264,73 @@ async def main():
             print(f"Plant AT{plant.tag}: {plant.coords.x:.2f} {plant.coords.y:.2f}") #testing#
         print("")
         img = res[1]
-        cv2.imshow("Testing", img)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+            cv2.imshow("Testing", img)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        else:
+            reply = sender.send_image(jetson_name, frame)
+            reply = reply.decode('utf-8')
+            if reply == "STOP":
+                break
+            
     while(res := updTagPos(cam, icepatches, anchors))[0] != 1:
         for ice in icepatches:
             print(f"Ice AT{ice.tag}: {ice.coords.x:.2f} {ice.coords.y:.2f}")
         print("")
         img = res[1]
-        cv2.imshow("Testing", img)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+            cv2.imshow("Testing", img)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        else:
+            reply = sender.send_image(jetson_name, frame)
+            reply = reply.decode('utf-8')
+            if reply == "STOP":
+                break
+            
     while(res := updTagPos(cam, robots, anchors))[0] != 1:
         for robot in robots:
             print(f"Robot AT{robot.tag}: {robot.coords.x:.2f} {robot.coords.y:.2f}") #testing#
         print("")
         img = res[1]
-        cv2.imshow("Testing", img)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+            cv2.imshow("Testing", img)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        else:
+            reply = sender.send_image(jetson_name, frame)
+            reply = reply.decode('utf-8')
+            if reply == "STOP":
+                break
+            
     if base is not None:
         while(res := updBasePos(cam, base, anchors))[0] != 1:
             print(f"Base AT{base.tag}: {base.coords.x:.2f} {base.coords.y:.2f}") #testing#
             print("")
             img = res[1]
-            cv2.imshow("Testing", img)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+            if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+                cv2.imshow("Testing", img)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+            else:
+                reply = sender.send_image(jetson_name, frame)
+                reply = reply.decode('utf-8')
+                if reply == "STOP":
+                    break
 
     # obstacles
     while (res := updObsPos(cam, obstacles, anchors))[0] != 1:
         img = res[1]
-        cv2.imshow("Testing", img)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+            cv2.imshow("Testing", img)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        else:
+            reply = sender.send_image(jetson_name, frame)
+            reply = reply.decode('utf-8')
+            if reply == "STOP":
+                break
     
     i = 0
     for r in robots:
@@ -309,12 +349,14 @@ async def main():
         await base.reset()
     
     print(f"Base: {base.coords.x:.2f}, {base.coords.y:.2f}")
+    print(f"Base: {base.entrances[0].coords.x:.2f}, {base.entrances[0].coords.y:.2f}")
+    print(f"Base: {base.entrances[1].coords.x:.2f}, {base.entrances[1].coords.y:.2f}")
     input("Press Enter to start: ")
-    cv2.destroyAllWindows()
+    if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+        cv2.destroyAllWindows()
     
     assignTargets(robots, icepatches, plants)
     
-    frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
     loop = asyncio.get_running_loop()
     window_name = "Camera Display"
     
@@ -330,11 +372,11 @@ async def main():
         
         for robot in robots:
             if robot.state == "None" or robot.state == "Waiting":
-                await stopRobot(robot)
+                await robot.stop()
             else:
                 finished = await followPath(cbf, robot, robots, obstacles)
                 if finished == True:
-                    await stopRobot(robot)
+                    await robot.stop()
                     if (robot.state == "Ice"):
                         await robot.target.deplete()
                         if robot.target.level == 0:
@@ -355,25 +397,16 @@ async def main():
         
         if (err != -1):
             img = displayElements(img, anchors, robots, obstacles, base)
-            resized_img = resizeFSCRN(img)
             
-            key = await loop.run_in_executor(None, asyncDisplay, window_name, resized_img)
-            if key == ord('q'):
+            stop = await loop.run_in_executor(None, asyncDisplay, window_name, img)
+            if stop == True:
                 break
             
     ### dust storm ###
-    start_time = time.perf_counter()
-    while True:
-        current_time = time.perf_counter()
-        if (current_time - start_time > 1.0):
-            break
-        for robot in robots:
-            await stopRobot(robot)
-        
     if base is not None:
         for robot in robots:
             await robot.dustStorm()
-            
+
         for plant in plants:
             plant.available = True
         for ice in icepatches:
@@ -381,59 +414,59 @@ async def main():
         
         await base.dustStorm()
         
-        for robot in robots:
-            robot.target = base
+        for idx, robot in enumerate(robots):
+            robot.target = base.entrances[idx]
             robot.state = "Base"
         
-        for robot in robots:    
-            while (robot.state != "None"):
+        while True:
+            if all(robot.state == "None" for robot in robots):
+                break
+            
+            for robot in robots:
                 err, img = updTagPos(cam, robots, anchors)
                 
                 if robot.state == "None" or robot.state == "Waiting":
-                    await stopRobot(robot)
+                    await robot.stop()
                 else:
-                    f = await followPath(cbf, robot, robots, obstacles, 0.3)
-                    if f == True or (robot.Vx == 0 and robot.Vy == 0):
+                    finished = await followPath(cbf, robot, robots, obstacles)
+                    
+                    if finished == True:
                         robot.state = "None"
                         robot.target = None
-                        await stopRobot(robot)
+                        await robot.stop()
                             
                 if (err != -1):
                     img = displayElements(img, anchors, robots, obstacles, base)
-                    resized_img = resizeFSCRN(img)
                     
-                    key = await loop.run_in_executor(None, asyncDisplay, window_name, resized_img)
-                    if key == ord('q'):
+                    stop = await loop.run_in_executor(None, asyncDisplay, window_name, img)
+                    if stop == True:
                         break
-                    
-            start_time = time.perf_counter()
-            while True:
-                current_time = time.perf_counter()
-                if (current_time - start_time > 1.0):
-                    break
-                for robot in robots:
-                    await stopRobot(robot)
         
-            await robot.enterBase()
-            await asyncio.sleep(5)
-            await robot.exitBase()
-            await asyncio.sleep(5)
+        for robot in robots:
+            await robot.stop()
+        await asyncio.sleep(1)
+        
+        await asyncio.gather(*[robot.enterBase() for robot in robots])
+        await asyncio.sleep(10)
+        
+        await asyncio.gather(*[robot.exitBase() for robot in robots])
+        await asyncio.sleep(1)
         
         await base.reset()
     
     ### loop 2 ###
     assignTargets(robots, icepatches, plants)
     
-    while True:
+    while not (all(ice.level == 0 for ice in icepatches) and all(plant.level == PLANT_LEVEL for plant in plants)):
         err, img = updTagPos(cam, robots, anchors)
         
         for robot in robots:
             if robot.state == "None" or robot.state == "Waiting":
-                await stopRobot(robot)
+                await robot.stop()
             else:
                 finished = await followPath(cbf, robot, robots, obstacles)
                 if finished == True:
-                    await stopRobot(robot)
+                    await robot.stop()
                     if (robot.state == "Ice"):
                         await robot.target.deplete()
                         if robot.target.level == 0:
@@ -454,14 +487,13 @@ async def main():
         
         if (err != -1):
             img = displayElements(img, anchors, robots, obstacles, base)
-            resized_img = resizeFSCRN(img)
             
-            key = await loop.run_in_executor(None, asyncDisplay, window_name, resized_img)
-            if key == ord('q'):
+            stop = await loop.run_in_executor(None, asyncDisplay, window_name, img)
+            if stop == True:
                 break
     
     cv2.destroyAllWindows()
     cam.stop()
-    
+
 if __name__ == "__main__":
     asyncio.run(main())
