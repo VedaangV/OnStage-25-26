@@ -35,7 +35,7 @@ void setup() {
   ring.show();  // Initialize all pixels to 'off'
 }
 
-const int levels = 4;
+const int levels = 6;
 int num_active = PIXEL_COUNT;
 
 void deplete() {
