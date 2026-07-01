@@ -10,8 +10,8 @@ robots = [robot("10.42.0.47", 5000, 0), robot("10.42.0.122", 5000, 5)]
 anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
 
 obstacles = [obstacle()]
-plants = [plant("10.42.0.169", 80, 7), plant("10.42.0.140", 80, 8)]
-icepatches = [ice("10.42.0.163", 81, 4), ice("10.42.0.61", 81, 6)]
+plants = [plant("10.42.0.140", 80, 8), plant("10.42.0.169", 80, 7)]# plant("10.42.0.140", 80, 8)]
+icepatches = [ice("10.42.0.61", 81, 6), ice("10.42.0.163", 81, 4)]#, ice("10.42.0.61", 81, 6)]
 base = base("10.42.0.213", 80, 9)
 
 # robots = [robot("192.168.32.152", 5000, 0), robot("192.168.32.243", 5000, 5)]
@@ -21,6 +21,14 @@ base = base("10.42.0.213", 80, 9)
 # plants = [plant("192.168.32.231", 80, 8), plant("192.168.32.209", 80, 7)]
 # icepatches = [ice("192.168.32.118", 81, 4), ice("192.168.32.171", 81, 6)]#, ice("192.168.32.118", 81, 4)]
 # base = base("192.168.32.136", 80, 9)
+
+# robots = [robot("172.20.10.3", 5000, 0), robot("172.20.10.4", 5000, 5)]
+# anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
+# 
+# obstacles = [obstacle()]
+# plants = [plant("172.20.10.7", 80, 7), plant("172.20.10.8", 80, 8)]
+# icepatches = [ice("172.20.10.6", 81, 4), ice("172.20.10.5", 81, 6)]
+# base = base("172.20.10.9", 80, 9)
 
 #
 ###*****     *****###
@@ -175,8 +183,62 @@ def assignTargets(robots, icepatches, plants): # system = plants or ice
                 r.state = "Waiting"
     return
 
+def assignEntrances(robots, entrances): # system = plants or ice
+    ### assign targets using matrix calculations ###
+    # intial calculation of closest robot targets (minimal movement)
+    # use Hungarian algorithm (O(n^3)): uses cost matrix to maximize efficiency 
+    agents = []
+    targets = []
+    for r in robots:
+        agents.append(r)
+    for e in entrances:
+        targets.append(e)
+    
+    # ice #
+    if (len(agents) > 0):
+        matrix = []
+        row = 0
+        for r in agents:
+            matrix.append([])
+            for i in targets:
+                matrix[row].append(r.coords.distance_to(i.coords))
+            row += 1
+        
+        m = Munkres()
+        indexes = m.compute(matrix)
+        #print_matrix(matrix, msg='Lowest cost through this matrix:')
+        total = 0
+        for row, column in indexes:
+            agents[row].target = targets[column] 
+            targets[column].available = False
+    return
+
+def resizeFSCRN(img):
+    #resize 640x480 image by factor of 1080/480
+    img = cv2.resize(img, None, fx=round(WIN_FSCRN_HEIGHT/WIN_HEIGHT, 2), fy=round(WIN_FSCRN_HEIGHT/WIN_HEIGHT, 2))
+
+    # 3. Create a solid black canvas matching the screen size
+    canvas = np.zeros((WIN_FSCRN_HEIGHT, WIN_FSCRN_WIDTH, 3), dtype=np.uint8)
+
+    # 4. Define the position (Y, X coordinates) where you want the top-left corner of the image
+    # Example: Positioning the image to be perfectly centered
+    y_offset = (WIN_FSCRN_HEIGHT - WIN_FSCRN_HEIGHT) // 2
+    x_offset = (WIN_FSCRN_WIDTH - int(WIN_WIDTH*WIN_FSCRN_HEIGHT/WIN_HEIGHT)) // 2
+
+    # Ensure the image fits within the bounds of your canvas coordinates
+    y_end = min(y_offset + WIN_FSCRN_HEIGHT, WIN_FSCRN_HEIGHT)
+    x_end = min(x_offset + int(WIN_WIDTH*WIN_FSCRN_HEIGHT/WIN_HEIGHT), WIN_FSCRN_WIDTH)
+
+    # 5. Copy the image onto the canvas 
+    canvas[y_offset:y_end, x_offset:x_end] = img[:y_end-y_offset, :x_end-x_offset]
+    return canvas
+
 def asyncDisplay(window_name, frame):
     if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+        if DISPLAY_SCALE == "fullscreen":
+            cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+            cv2.setWindowProperty(window_name, cv2.WND_PROP_TOPMOST, 1)
+            cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         cv2.imshow(window_name, frame)
         stop = cv2.waitKey(1) & 0xFF == ord('q')
     else:
@@ -201,6 +263,12 @@ async def main():
             continue
         
         if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+            if DISPLAY_SCALE == "fullscreen":
+                frame = resizeFSCRN(frame)
+                cv2.namedWindow("Setup", cv2.WINDOW_NORMAL)
+                cv2.setWindowProperty("Setup", cv2.WND_PROP_TOPMOST, 1)
+                cv2.setWindowProperty("Setup", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+            
             cv2.imshow("Setup", frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
@@ -223,24 +291,6 @@ async def main():
         if base is not None:
             base.reader, base.writer = await wifi_connect(base.IP, base.port)
             
-    while True:
-        ret, frame = cam.read()
-        if not ret:
-            print("Failed to get camera frame")
-            continue
-        
-        if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
-            cv2.imshow("Setup", frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-        else:
-            reply = sender.send_image(jetson_name, frame)
-            reply = reply.decode('utf-8')
-            if reply == "STOP":
-                break
-    if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
-        cv2.destroyAllWindows()
-            
     ### initialize tags/positions ###
     # anchors
     while (res := initAnchors(cam, anchors))[0] != 1:
@@ -249,6 +299,12 @@ async def main():
         print("") #testing#
         img = res[1]
         if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+            if DISPLAY_SCALE == "fullscreen":
+                img = resizeFSCRN(img)
+                cv2.namedWindow("Testing", cv2.WINDOW_NORMAL)
+                cv2.setWindowProperty("Testing", cv2.WND_PROP_TOPMOST, 1)
+                cv2.setWindowProperty("Testing", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+                
             cv2.imshow("Testing", img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
@@ -265,6 +321,11 @@ async def main():
         print("")
         img = res[1]
         if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+            if DISPLAY_SCALE == "fullscreen":
+                img = resizeFSCRN(img)
+                cv2.namedWindow("Testing", cv2.WINDOW_NORMAL)
+                cv2.setWindowProperty("Testing", cv2.WND_PROP_TOPMOST, 1)
+                cv2.setWindowProperty("Testing", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
             cv2.imshow("Testing", img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
@@ -280,6 +341,11 @@ async def main():
         print("")
         img = res[1]
         if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+            if DISPLAY_SCALE == "fullscreen":
+                img = resizeFSCRN(img)
+                cv2.namedWindow("Testing", cv2.WINDOW_NORMAL)
+                cv2.setWindowProperty("Testing", cv2.WND_PROP_TOPMOST, 1)
+                cv2.setWindowProperty("Testing", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
             cv2.imshow("Testing", img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
@@ -295,6 +361,11 @@ async def main():
         print("")
         img = res[1]
         if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+            if DISPLAY_SCALE == "fullscreen":
+                img = resizeFSCRN(img)
+                cv2.namedWindow("Testing", cv2.WINDOW_NORMAL)
+                cv2.setWindowProperty("Testing", cv2.WND_PROP_TOPMOST, 1)
+                cv2.setWindowProperty("Testing", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
             cv2.imshow("Testing", img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
@@ -310,6 +381,11 @@ async def main():
             print("")
             img = res[1]
             if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+                if DISPLAY_SCALE == "fullscreen":
+                    img = resizeFSCRN(img)
+                    cv2.namedWindow("Testing", cv2.WINDOW_NORMAL)
+                    cv2.setWindowProperty("Testing", cv2.WND_PROP_TOPMOST, 1)
+                    cv2.setWindowProperty("Testing", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
                 cv2.imshow("Testing", img)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
@@ -348,12 +424,9 @@ async def main():
     if base is not None:
         await base.reset()
     
-    print(f"Base: {base.coords.x:.2f}, {base.coords.y:.2f}")
-    print(f"Base: {base.entrances[0].coords.x:.2f}, {base.entrances[0].coords.y:.2f}")
-    print(f"Base: {base.entrances[1].coords.x:.2f}, {base.entrances[1].coords.y:.2f}")
-    input("Press Enter to start: ")
     if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
         cv2.destroyAllWindows()
+    input("Press Enter to start: ")
     
     assignTargets(robots, icepatches, plants)
     
@@ -395,8 +468,10 @@ async def main():
                     robot.target = None
                     assignTargets(robots, icepatches, plants)
         
-        if (err != -1):
+        if (err != -1 and not ("none".casefold() in DISPLAY_TYPE.casefold())):
             img = displayElements(img, anchors, robots, obstacles, base)
+            if DISPLAY_SCALE == "fullscreen":
+                img = resizeFSCRN(img)
             
             stop = await loop.run_in_executor(None, asyncDisplay, window_name, img)
             if stop == True:
@@ -417,6 +492,8 @@ async def main():
         for idx, robot in enumerate(robots):
             robot.target = base.entrances[idx]
             robot.state = "Base"
+            
+        assignEntrances(robots, base.entrances)
         
         while True:
             if all(robot.state == "None" for robot in robots):
@@ -435,8 +512,10 @@ async def main():
                         robot.target = None
                         await robot.stop()
                             
-                if (err != -1):
+                if (err != -1 and not ("none".casefold() in DISPLAY_TYPE.casefold())):
                     img = displayElements(img, anchors, robots, obstacles, base)
+                    if DISPLAY_SCALE == "fullscreen":
+                        img = resizeFSCRN(img)
                     
                     stop = await loop.run_in_executor(None, asyncDisplay, window_name, img)
                     if stop == True:
@@ -485,12 +564,63 @@ async def main():
                     robot.target = None
                     assignTargets(robots, icepatches, plants)
         
-        if (err != -1):
+        if (err != -1 and not ("none".casefold() in DISPLAY_TYPE.casefold())):
             img = displayElements(img, anchors, robots, obstacles, base)
+            if DISPLAY_SCALE == "fullscreen":
+                img = resizeFSCRN(img)
             
             stop = await loop.run_in_executor(None, asyncDisplay, window_name, img)
             if stop == True:
                 break
+            
+    if base is not None:
+        for idx, robot in enumerate(robots):
+            robot.target = base.entrances[idx]
+            robot.state = "Base"
+            
+        assignEntrances(robots, base.entrances)
+        
+        while True:
+            if all(robot.state == "None" for robot in robots):
+                break
+            
+            for robot in robots:
+                err, img = updTagPos(cam, robots, anchors)
+                
+                if robot.state == "None" or robot.state == "Waiting":
+                    await robot.stop()
+                else:
+                    finished = await followPath(cbf, robot, robots, obstacles)
+                    
+                    if finished == True:
+                        robot.state = "None"
+                        robot.target = None
+                        await robot.stop()
+                            
+                if (err != -1 and not ("none".casefold() in DISPLAY_TYPE.casefold())):
+                    img = displayElements(img, anchors, robots, obstacles, base)
+                    if DISPLAY_SCALE == "fullscreen":
+                        img = resizeFSCRN(img)
+                    
+                    stop = await loop.run_in_executor(None, asyncDisplay, window_name, img)
+                    if stop == True:
+                        break
+        
+        for robot in robots:
+            await robot.stop()
+        await asyncio.sleep(1)
+        for robot in robots:
+            await robot.end()
+        await asyncio.sleep(1)
+    
+    for robot in robots:
+        await wifi_disconnect(robot.writer)
+    for ice in icepatches:
+        await wifi_disconnect(ice.writer)
+    for plant in plants:
+        await wifi_disconnect(plant.writer)
+    if base is not None:
+        await wifi_disconnect(base.writer)
     
     cv2.destroyAllWindows()
     cam.stop()
