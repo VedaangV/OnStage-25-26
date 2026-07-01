@@ -227,17 +227,25 @@ class CBFController:
 
 async def wifi_read_velocity(robot):
     text = await wifi_read(robot.reader)
-    matches = re.findall(r"[-+]?\d+\.\d+", text)
-    floats = [float(num) for num in matches]
-    if (len(floats) >= 2):
-        robot.Vx_act = floats[0]
-        robot.Vy_act = floats[1]
+    if isinstance(text, (str, bytes)):
+        matches = re.findall(r"[-+]?\d+\.\d+", text)
+        floats = [float(num) for num in matches]
+        if (len(floats) >= 2):
+            robot.Vx_act = floats[0]
+            robot.Vy_act = floats[1]
 
 _current_task: asyncio.Task | None = None
-_all_tasks = []
 async def followPath(cbf, robot, all_robots, obstacles, threshold = DIST_THRESHOLD):
     global _current_task
     if robot.coords.distance_to(robot.target.coords) < threshold:
+        if _current_task is None or _current_task.done():
+            pass
+        else:
+            _current_task.cancel()
+            try:
+                await _current_task
+            except asyncio.CancelledError:
+                pass
         return True
 
     Vx, Vy = cbf.compute_safe_velocity(robot, obstacles, all_robots)
@@ -245,16 +253,11 @@ async def followPath(cbf, robot, all_robots, obstacles, threshold = DIST_THRESHO
     robot.Vy = Vy
 
     if ENABLE_WIFI:
-        await wifi_write(robot.writer, f"vx: {Vx:.3f}, vy: {Vy:.3f}\n")
+        await wifi_write(robot.writer, f"vx: {Vx:.3f}, vy: {Vy:.3f}")
         if _current_task is None or _current_task.done():
             _current_task = asyncio.create_task(wifi_read_velocity(robot))
     
     return False
-
-async def stopRobot(robot):
-    """Send zero-velocity command and clear path."""
-    if ENABLE_WIFI:
-        await wifi_write(robot.writer, "vx: 0, vy: 0\n")
         
 # ===========================================================================
 # Stand-alone simulation / visualiser
