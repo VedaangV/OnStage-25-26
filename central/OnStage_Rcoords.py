@@ -208,17 +208,21 @@ def updBasePos(cam, base, anchors):
             
             p = convertPos(p, anchors[0].coords, anchors[1].coords, anchors[2].coords)
             ptA = convertPos(ptA, anchors[0].coords, anchors[1].coords, anchors[2].coords)
-            angle_rad = math.atan2((p.y - ptA.y), (p.x-ptA.x)) + math.pi/4
+            angle_rad = math.atan2((p.y - ptA.y), (p.x-ptA.x)) - math.pi/4
             
             print(angle_rad)
             
-            p = Point(p.x + math.cos(angle_rad+math.pi/2)*(-2.5*ROBOT_RADIUS), p.y + math.sin(angle_rad+math.pi/2)*(-2.5*ROBOT_RADIUS))
-            p = Point(p.x + math.cos(angle_rad+math.pi)*(1.25*ROBOT_RADIUS), p.y + math.sin(angle_rad+math.pi)*(1.25*ROBOT_RADIUS))
+            p1 = Point(p.x + 0.5, p.y + 0.75)
+            
+            p2 = Point(p.x + 1.5, p.y + 0.75)
             
             base.coords = p
+            base.entrances[0].coords = p1
+            base.entrances[1].coords = p2
             break
             
     rgb = displayTags(results, rgb)
-    if base.coords.x < 0 or base.coords.y < 0:
+    if base.coords.x == -1 and base.coords.y == -1:
         return 0, rgb
-    return 1, rgb
+    else:
+        return 1, rgb
