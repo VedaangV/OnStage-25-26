@@ -60,6 +60,6 @@ async def wifi_write(writer, message, debug = False):
     except asyncio.CancelledError:
         pass
 
-async def wifi_disconnect(s):
+async def wifi_disconnect(writer):
     writer.close()
     await writer.wait_closed()
