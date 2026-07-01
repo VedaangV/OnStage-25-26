@@ -7,6 +7,7 @@ import math
 import re
 
 import asyncio
+import atexit
 import socket
 import time
 import subprocess
@@ -15,6 +16,8 @@ import threading
 import copy
 
 import cv2
+import imagezmq
+
 module_dir = os.path.abspath('/home/pi/onstage/python/apriltag/lib/python3.11/site-packages')
 sys.path.append(module_dir)
 import apriltag
@@ -32,14 +35,19 @@ FIELD_WIDTH = 7 #ft
 FIELD_LENGTH = 4.5 #ft
 
 #_Common.py
-ICE_LEVEL = 4
-PLANT_LEVEL = 4
+ICE_LEVEL = 8
+PLANT_LEVEL = 8
 
 #_Master.py
-DUSTSTORM_ACTIVATION_TIME = 40 # seconds
-CBF_GAMMA = 0.8 #CBF aggressiveness — raise if robots get too close to obstacles/each other
+DISPLAY_TYPE = "imshow"
+PC_IP = "10.42.0.43"
+
+DUSTSTORM_ACTIVATION_TIME = 5 # seconds
+
+CBF_GAMMA = 0.7 #CBF aggressiveness — raise if robots get too close to obstacles/each other
 CBF_KATT = 1.2 #waypoint attraction strength
-CBF_SAFETYMARGIN = 0.1 #extra clearance in field units (on top of robot + obstacle radii)
+CBF_SAFETYMARGIN = 0 #extra clearance in field units (on top of robot + obstacle radii)
+
 CAMERA_TYPE = "usb"
 CAMERA_CONTRAST = 1.0
 CAMERA_BRIGHTNESS = -40
@@ -50,7 +58,7 @@ WIN_HEIGHT = 480
 
 #_CBF.py
 ROBOT_RADIUS     = 0.37 #ft
-DIST_THRESHOLD   = 0.5 #ft #how from target to count as successful
+DIST_THRESHOLD   = 0.7 #ft #how from target to count as successful
 MAX_SPEED        = 0.4 #ft/s
 MIN_SPEED        = 0.4 #ft/s
 
@@ -96,6 +104,14 @@ class robot:
         self.tag = tag;
     def setTarget(self, target):
         self.target = target
+
+    async def stop(self):
+        self.Vx = 0.0
+        self.Vy = 0.0
+        self.Vx_act = 0.0
+        self.Vy_act = 0.0
+        if ENABLE_WIFI == True:
+            await wifi_write(self.writer, "stop", True)
     async def collectWater(self):
         self.haswater = True
         if ENABLE_WIFI == True:
@@ -106,14 +122,20 @@ class robot:
             await wifi_write(self.writer, "deplete")
     async def dustStorm(self):
         if ENABLE_WIFI == True:
-            await wifi_write(self.writer, "dust")
+            await wifi_write(self.writer, "dust", True)
     async def enterBase(self):
         if ENABLE_WIFI == True:
             await wifi_write(self.writer, "enter")
+            reply = ""
+            while reply != "done":
+                reply = await wifi_read(self.reader)
     async def exitBase(self):
         if ENABLE_WIFI == True:
             await wifi_write(self.writer, "exit")
-    
+            reply = ""
+            while reply != "done":
+                reply = await wifi_read(self.reader)
+
 class anchor:
     tag: int
     coords: Point = Point(-1, -1)
@@ -182,7 +204,6 @@ class ice:
 
 class entrance:
     coords: Point = Point(-1, -1)
-    available = True
     
 class base:
     tag: int
@@ -191,6 +212,7 @@ class base:
     reader = None
     writer = None
     coords: Point = Point(-1, -1)
+    entrances = [entrance(), entrance()]
     
     def __init__(self, IP, port, tag):
         self.IP = IP
@@ -202,4 +224,3 @@ class base:
     async def reset(self):
         if ENABLE_WIFI == True:
             await wifi_write(self.writer, "T")
-
