@@ -37,25 +37,26 @@ async def wifi_connect(host: str, port: int, timeout: float = 10.0):
         
     return None, None
 
-async def wifi_read(reader):
+async def wifi_read(reader, debug = False):
     try:
         while True:
             data = await reader.read(1024)
             if not data:
                 print("Connection closed by server.")
                 break
-            print(f"Received: {data.decode().strip()}")
+            if debug == True:
+                print(f"Received: {data.decode().strip()}")
             return data.decode().strip()
     except asyncio.CancelledError:
         pass
 
-async def wifi_write(writer, message):
+async def wifi_write(writer, message, debug = False):
     try:
-        message = f"{message}"
+        message = f"{message}\n"
         writer.write(message.encode())
         await writer.drain()
-        print(f"Sent: {message}")
-#         await asyncio.sleep(1)
+        if debug == True:
+            print(f"Sent: {message}")
     except asyncio.CancelledError:
         pass
 
