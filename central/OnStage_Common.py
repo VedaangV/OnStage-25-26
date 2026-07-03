@@ -39,19 +39,19 @@ ICE_LEVEL = 6
 PLANT_LEVEL = 6
 
 #_Master.py
-DISPLAY_TYPE = "hdmi"  # imshow/local/hdmi  ssh/imagezmq  none
+DISPLAY_TYPE = "imshow"  # imshow/local/hdmi  ssh/imagezmq  none
 DISPLAY_SCALE = "fullscreen"
 PC_IP = "10.42.0.43"
 
-DUSTSTORM_ACTIVATION_TIME = 43 # seconds
+DUSTSTORM_ACTIVATION_TIME = 45 # seconds
 
 CBF_GAMMA = 0.7 #CBF aggressiveness — raise if robots get too close to obstacles/each other
 CBF_KATT = 1.2 #waypoint attraction strength
-CBF_SAFETYMARGIN = 0 #extra clearance in field units (on top of robot + obstacle radii)
+CBF_SAFETYMARGIN = 0.08 #extra clearance in field units (on top of robot + obstacle radii)
 
 CAMERA_TYPE = "usb"
 CAMERA_CONTRAST = 1.0
-CAMERA_BRIGHTNESS = -50
+CAMERA_BRIGHTNESS = 0
 WIN_FSCRN_WIDTH = 1920
 WIN_FSCRN_HEIGHT = 1080
 WIN_WIDTH = 640
@@ -59,7 +59,7 @@ WIN_HEIGHT = 480
 
 #_CBF.py
 ROBOT_RADIUS     = 0.37 #ft
-DIST_THRESHOLD   = 0.7 #ft #how from target to count as successful
+DIST_THRESHOLD   = 0.74 #ft #how from target to count as successful
 MAX_SPEED        = 0.4 #ft/s
 MIN_SPEED        = 0.4 #ft/s
 
