@@ -3,8 +3,8 @@
 
 #define PORT 80
 
-const char* ssid = "jetson";
-const char* pswd = "todbot1234";
+const char* ssid = "iptime";
+const char* pswd = "srdevhelp";
 
 const int ENA = 14; // encoder 1
 const int ENB = 15; // encoder 2
@@ -24,7 +24,7 @@ int cmap(int val, int olow, int ohigh, int mlow, int mhigh) {
 }
 
 float encoderPos = 0;
-const float stage_encoders = 120; // 160;
+const float stage_encoders = 110; // 160;
 float current_encoders = 0;
 
 //motor speed
@@ -78,7 +78,7 @@ void setup() {
 }
 
 void growth() {
-  plant.speed(30);
+  plant.speed(35);
   while (encoderPos < (current_encoders + stage_encoders)) {
     delay(2);
   }
