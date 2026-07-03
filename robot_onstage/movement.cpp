@@ -4,6 +4,8 @@
 
 using namespace std;
 
+#define ROBOT_0
+
 //define motor pins
 Motor Motor1{8, 9}, Motor2{12, 13}, Motor3{10, 11};
 
@@ -40,11 +42,25 @@ void Motor::speed(int val) {
   }
 }
 
+#if defined(ROBOT_5)
+  const float mult1 = 0.8;
+  const float mult2 = 0.8;
+  const float mult3 = 0.8;
+#elif defined(ROBOT_0)
+  const float mult1 = 1.0;
+  const float mult2 = 1.0;
+  const float mult3 = 1.0;
+#else
+  const float mult1 = 1.0;
+  const float mult2 = 1.0;
+  const float mult3 = 1.0;
+#endif
+
 //function: set motor speeds
 void motor(int speed1, int speed2, int speed3) {
-  Motor1.speed(speed1);
-  Motor2.speed(speed2);
-  Motor3.speed(speed3);
+  Motor1.speed(speed1 * mult1);
+  Motor2.speed(speed2 * mult2);
+  Motor3.speed(speed3 * mult3);
 }
 
 float degtorad(int degrees) {
@@ -95,7 +111,7 @@ void vmotor(float Vx, float Vy, float* Vx_act, float* Vy_act) {
 
   motor(s1, s2, s3);
 
-  if (Vx_act != nullptr && Vy_act != nullptr) {
+  if (Vx_act != nullptr && Vy_act != nullptr && !(Vx_act == 0 && Vy_act == 0)) {
     float m1 = (float)s1 / ftsToSpeed;
     float m2 = (float)s2 / ftsToSpeed;
     float m3 = (float)s3 / ftsToSpeed;
