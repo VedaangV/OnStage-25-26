@@ -6,11 +6,12 @@
 #include <Wire.h>
 #include <WiFi.h>
 
+//*** BEFORE UPLOAD, CHECK MACROS IN "ROBOT_ONSTAGE.INO" AND "MOVEMENT.CPP" ***//
 #define ENABLE_WIFI
 
 WiFiServer server(5000); 
-const char* ssid = "jetson";
-const char* password = "todbot1234";
+const char* ssid = "iptime";
+const char* password = "srdevhelp";
 
 float vx = 0.0;
 float vy = 0.0;
@@ -61,7 +62,8 @@ void setup() {
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(".");
+    Serial.print("Status: ");
+    Serial.println(WiFi.status());
   }
   Serial.println("WiFi connected");
   server.begin();
@@ -79,13 +81,23 @@ void setup() {
     fillNPixel(WHITE);
     delay(500);
   } 
+}
 
-  //get IMU initial value
-  sensors_event_t event;
-  bno.getEvent(&event);
-  rotation_offset = ((int) event.orientation.x);
+bool started = false;
 
-  upd_rotation();
+void parseVelocity(String data) {
+  int xpos = data.indexOf("x");
+  int ypos = data.indexOf("y");
+  if (xpos == -1 || ypos == -1) return;
+
+  String vxStr = data.substring(data.indexOf("x:") + 3, ypos-3);
+  String vyStr = data.substring(data.indexOf("y:") + 3, data.length());
+
+  vxStr.trim();
+  vyStr.trim();
+
+  vx = vxStr.toFloat();
+  vy = vyStr.toFloat();
 }
 
 void loop() {
@@ -95,8 +107,17 @@ void loop() {
   if (client) {
     Serial.println("\nNew Client Connected!");
     while (client.connected()) { // While the client is connected
+      if (started == false) {
+        //get IMU initial value
+        sensors_event_t event;
+        bno.getEvent(&event);
+        rotation_offset = ((int) event.orientation.x);
+
+        upd_rotation();
+      }
       if (client.available()) { // If there is data available to read
         char c = client.read(); // Read a character
+        started = true;
         if (c == '\n') {
           if(inputBuffer.indexOf("stop") != -1){
             inputBuffer = "";
@@ -171,11 +192,12 @@ void loop() {
           }
           else {
             inputBuffer = "";
-            motor(0, 0, 0);
+            vmotor(vx, vy, &vx_act, &vy_act);
           }
         } 
         else {
           inputBuffer += c;
+          motor(0, 0, 0); //vmotor(vx, vy, &vx_act, &vy_act);
         } 
       }
     }
@@ -229,19 +251,4 @@ void loop() {
   // }
 
 #endif
-}
-
-void parseVelocity(String data) {
-  int xpos = data.indexOf("x");
-  int ypos = data.indexOf("y");
-  if (xpos == -1 || ypos == -1) return;
-
-  String vxStr = data.substring(data.indexOf("x:") + 3, ypos-3);
-  String vyStr = data.substring(data.indexOf("y:") + 3, data.length());
-
-  vxStr.trim();
-  vyStr.trim();
-
-  vx = vxStr.toFloat();
-  vy = vyStr.toFloat();
 }
