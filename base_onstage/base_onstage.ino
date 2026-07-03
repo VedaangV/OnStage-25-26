@@ -5,8 +5,8 @@
 #define PORT 80
 
 
-const char* ssid = "jetson";
-const char* pswd = "todbot1234";
+const char* ssid = "iptime";
+const char* pswd = "srdevhelp";
 
 
 const int IN1 = 14;  // input 1
