@@ -4,8 +4,8 @@
 
 #define PORT 81
 
-const char* ssid = "jetson";
-const char* pswd = "todbot1234";
+const char* ssid = "iptime";
+const char* pswd = "srdevhelp";
 
 WiFiServer server(PORT);
 WiFiClient client;
