@@ -6,13 +6,21 @@ from OnStage_CBF import CBFController, followPath
 ###***** CLASS ARRAYS, CHANGE DEPENDING ON SETUP *****###
 #
 
-robots = [robot("10.42.0.47", 5000, 0), robot("10.42.0.122", 5000, 5)]
+robots = [robot("192.168.0.5", 5000, 0), robot("192.168.0.4", 5000, 5)]
 anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
 
 obstacles = [obstacle()]
-plants = [plant("10.42.0.140", 80, 8), plant("10.42.0.169", 80, 7)]# plant("10.42.0.140", 80, 8)]
-icepatches = [ice("10.42.0.61", 81, 6), ice("10.42.0.163", 81, 4)]#, ice("10.42.0.61", 81, 6)]
-base = base("10.42.0.213", 80, 9)
+plants = [plant("192.168.0.6", 80, 7), plant("192.168.0.3", 80, 8)]
+icepatches = [ice("192.168.0.2", 81, 4), ice("192.168.0.7", 81, 6)]
+base = base("192.168.0.9", 80, 9)
+
+# robots = [robot("10.42.0.47", 5000, 0), robot("10.42.0.122", 5000, 5)]
+# anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
+# 
+# obstacles = [obstacle()]
+# plants = [plant("10.42.0.140", 80, 8), plant("10.42.0.169", 80, 7)]# plant("10.42.0.140", 80, 8)]
+# icepatches = [ice("10.42.0.61", 81, 6), ice("10.42.0.163", 81, 4)]#, ice("10.42.0.61", 81, 6)]
+# base = base("10.42.0.213", 80, 9)
 
 # robots = [robot("192.168.32.152", 5000, 0), robot("192.168.32.243", 5000, 5)]
 # anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
@@ -526,7 +534,7 @@ async def main():
         await asyncio.sleep(1)
         
         await asyncio.gather(*[robot.enterBase() for robot in robots])
-        await asyncio.sleep(10)
+        await asyncio.sleep(12)
         
         await asyncio.gather(*[robot.exitBase() for robot in robots])
         await asyncio.sleep(1)
@@ -590,7 +598,7 @@ async def main():
                 if robot.state == "None" or robot.state == "Waiting":
                     await robot.stop()
                 else:
-                    finished = await followPath(cbf, robot, robots, obstacles)
+                    finished = await followPath(cbf, robot, robots, obstacles, 0.37)
                     
                     if finished == True:
                         robot.state = "None"
