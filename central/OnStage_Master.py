@@ -3,52 +3,47 @@ from OnStage_Common import *
 from OnStage_Rcoords import updTagPos, updObsPos, updBasePos, initAnchors
 from OnStage_CBF import CBFController, followPath
 
-###***** CLASS ARRAYS, CHANGE DEPENDING ON SETUP *****###
-#
+###***** CLASS ARRAYS *****###
+# arrays containing initialization for each component
+# order of parameters: ("IP_ADDRESS", IP_PORT, APRILTAG_ID)
+# IP parameters change depending on communication configuration and can sometimes change after reuploading code to components 
 
+#----- CONFIGURATION A = IPTIME ROUTER -----#
 robots = [robot("192.168.0.5", 5000, 0), robot("192.168.0.4", 5000, 5)]
-anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
-
+anchors = [anchor(1), anchor(2), anchor(3)]
 obstacles = [obstacle()]
 plants = [plant("192.168.0.6", 80, 7), plant("192.168.0.3", 80, 8)]
 icepatches = [ice("192.168.0.2", 81, 4), ice("192.168.0.7", 81, 6)]
 base = base("192.168.0.9", 80, 9)
 
-# robots = [robot("10.42.0.47", 5000, 0), robot("10.42.0.122", 5000, 5)]
-# anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
-# 
-# obstacles = [obstacle()]
-# plants = [plant("10.42.0.140", 80, 8), plant("10.42.0.169", 80, 7)]# plant("10.42.0.140", 80, 8)]
-# icepatches = [ice("10.42.0.61", 81, 6), ice("10.42.0.163", 81, 4)]#, ice("10.42.0.61", 81, 6)]
-# base = base("10.42.0.213", 80, 9)
+#----- CONFIGURATION B = JETSON HOTSPOT -----#
+'''
+robots = [robot("10.42.0.47", 5000, 0), robot("10.42.0.122", 5000, 5)]
+anchors = [anchor(1), anchor(2), anchor(3)]
+obstacles = [obstacle()]
+plants = [plant("10.42.0.140", 80, 8), plant("10.42.0.169", 80, 7)]
+icepatches = [ice("10.42.0.61", 81, 6), ice("10.42.0.163", 81, 4)]
+base = base("10.42.0.213", 80, 9)
+'''
 
-# robots = [robot("192.168.32.152", 5000, 0), robot("192.168.32.243", 5000, 5)]
-# anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
-# 
-# obstacles = [obstacle()]
-# plants = [plant("192.168.32.231", 80, 8), plant("192.168.32.209", 80, 7)]
-# icepatches = [ice("192.168.32.118", 81, 4), ice("192.168.32.171", 81, 6)]#, ice("192.168.32.118", 81, 4)]
-# base = base("192.168.32.136", 80, 9)
+#----- CONFIGURATION C = STORMINGKIDS WIFI -----#
+'''
+robots = [robot("192.168.32.152", 5000, 0), robot("192.168.32.243", 5000, 5)]
+anchors = [anchor(1), anchor(2), anchor(3)] 
+obstacles = [obstacle()]
+plants = [plant("192.168.32.231", 80, 8), plant("192.168.32.209", 80, 7)]
+icepatches = [ice("192.168.32.118", 81, 4), ice("192.168.32.171", 81, 6)]#, ice("192.168.32.118", 81, 4)]
+base = base("192.168.32.136", 80, 9)
+'''
 
-# robots = [robot("172.20.10.3", 5000, 0), robot("172.20.10.4", 5000, 5)]
-# anchors = [anchor(1), anchor(2), anchor(3)]  #AT tag 0-2
-# 
-# obstacles = [obstacle()]
-# plants = [plant("172.20.10.7", 80, 7), plant("172.20.10.8", 80, 8)]
-# icepatches = [ice("172.20.10.6", 81, 4), ice("172.20.10.5", 81, 6)]
-# base = base("172.20.10.9", 80, 9)
-
-#
-###*****     *****###
-
-### CBF controller ###
+### initialize CBF controller ###
 cbf = CBFController(gamma=CBF_GAMMA, k_att=CBF_KATT, safety_margin=CBF_SAFETYMARGIN)
 
-### setup camera ###
+### camera object ###
 class VideoStream:
     def __init__(self):
         if ("phone".casefold() in CAMERA_TYPE.casefold()) or ("ipcam".casefold() in CAMERA_TYPE.casefold()):
-            ### phone IPcam ###
+            # configuration for phone using IPcam app
             gst_pipeline = (
                 "souphttpsrc location=http://192.168.32.214:8080/video is-live=true ! "
                 "multipartdemux ! "
@@ -59,7 +54,7 @@ class VideoStream:
             )
             self.cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
         else:
-            ### USB webcam ###
+            # configuration for USB webcam 
             self.cap = cv2.VideoCapture(0)
         
         if not self.cap.isOpened():
@@ -67,25 +62,28 @@ class VideoStream:
             exit()
 
         self.ret, self.frame = self.cap.read()
+
+        # use threading to mitigate lag/delay
         self.lock = threading.Lock()
         self.running = True
-
         threading.Thread(target=self.update, daemon=True).start()
 
     def update(self):
         while self.running:
-            ret, frame = self.cap.read()
-            # control Contrast 
+            ret, frame = self.cap.read() 
+            # adjust the contrast and brightness of the camera image
             alpha = CAMERA_CONTRAST
-            # control brightness
             beta = CAMERA_BRIGHTNESS
             frame = cv2.convertScaleAbs(frame, alpha=alpha, beta=beta) 
+            # threading .Lock keeps a constant feed of images going, so when you use .read you pull from thread rather than having to get an image spontaneously
+            # this reduces delay and prevents the program from freezing in order to get the new image
             if ret:
                 with self.lock:
                     self.ret = ret
                     self.frame = frame
 
     def read(self):
+        # pull image from the thread
         with self.lock:
             return self.ret, self.frame
 
@@ -93,24 +91,30 @@ class VideoStream:
         self.running = False
         self.cap.release()
         
-# Camera object
+### initialize camera ###
 cam = VideoStream()
-# ImageZMQ from Jetson to PC
+# intialize ImageZMQ, used if streaming camera feed to computer screen using TCP
 sender = imagezmq.ImageSender(connect_to=f"tcp://{PC_IP}:5555")
 jetson_name = "jetson"
 
+### function: displayElements ###
+# show aspects of field elements by using OpenCV to draw on top of frame given by .read 
 def displayElements(img, anchors, robots, obstacles, base):
     for robot in robots:
+        # Jetson requested velocities = yellow arrow
         startpt = (int(robot.coords.x / FIELD_WIDTH * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.coords.y / FIELD_LENGTH * (abs(anchors[0].coords.y - anchors[2].coords.y))))
         endpt = (int((robot.coords.x + robot.Vx) / FIELD_WIDTH * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - (robot.coords.y + robot.Vy) / FIELD_LENGTH * (abs(anchors[0].coords.y - anchors[2].coords.y))))
         cv2.arrowedLine(img, startpt, endpt, (0, 255, 255), 3)
         
+        # Actual velocities = orange arrow
         endpt = (int((robot.coords.x + robot.Vx_act) / FIELD_WIDTH * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - (robot.coords.y + robot.Vy_act) / FIELD_LENGTH * (abs(anchors[0].coords.y - anchors[2].coords.y))))
         cv2.arrowedLine(img, startpt, endpt, (0, 100, 255), 3)
-    
+
+        # target locations
         if hasattr(robot, "target") and hasattr(robot.target, "coords"):
             cv2.circle(img, (int(robot.target.coords.x / FIELD_WIDTH * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - robot.target.coords.y / FIELD_LENGTH * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 5, (255, 255, 0), -1)    
 
+    # obstacle borders
     for obs in obstacles:
         pts = np.array(obs.border)
         for i in range(len(pts)):
@@ -118,21 +122,22 @@ def displayElements(img, anchors, robots, obstacles, base):
             pts[i][1] = anchors[2].coords.y - pts[i][1] / FIELD_LENGTH * (abs(anchors[0].coords.y - anchors[2].coords.y))
         pts = pts.astype(np.int32)
         cv2.polylines(img, [pts], isClosed=True, color=(0, 0, 255), thickness=2)
-    
+
+    # base entrance locations
     if base is not None:
         for entrance in base.entrances:
             cv2.circle(img, (int(entrance.coords.x / FIELD_WIDTH * (abs(anchors[0].coords.x - anchors[1].coords.x)) + anchors[0].coords.x), int(anchors[2].coords.y - entrance.coords.y / FIELD_LENGTH * (abs(anchors[0].coords.y - anchors[2].coords.y)))), 5, (255, 0, 150), -1)
         
     return img
-    
-def assignTargets(robots, icepatches, plants): # system = plants or ice
-    ### assign targets using matrix calculations ###
-    # intial calculation of closest robot targets (minimal movement)
-    # use Hungarian algorithm (O(n^3)): uses cost matrix to maximize efficiency 
-    want_plant = []
-    want_ice = []
-    freeplant = []
-    freeice = []
+
+### function: assignTargets ###
+# use the Hungarian algorithm (matrix calculations, O(n^3)) to assign robots to plants and ice
+def assignTargets(robots, icepatches, plants): 
+    want_plant = []     # robots that need to go to plants
+    want_ice = []       # robots that need to to ice
+    freeplant = []      # available plants
+    freeice = []        # available ice
+    # sort field elements into arrays above
     for r in robots:
         if (r.state == "None" or r.state == "Waiting"):
             if r.haswater == False:
@@ -145,8 +150,8 @@ def assignTargets(robots, icepatches, plants): # system = plants or ice
     for p in plants:
         if (p.available == True):
             freeplant.append(p)
-    
-    # ice #
+
+    # calculate ice-robot assignment based on distance between robot and ice
     if (len(want_ice) > 0):
         matrix = []
         row = 0
@@ -158,8 +163,8 @@ def assignTargets(robots, icepatches, plants): # system = plants or ice
         
         m = Munkres()
         indexes = m.compute(matrix)
-        #print_matrix(matrix, msg='Lowest cost through this matrix:')
         total = 0
+        # change object variables to match new assignments
         for row, column in indexes:
             want_ice[row].target = freeice[column] 
             freeice[column].available = False
@@ -168,7 +173,7 @@ def assignTargets(robots, icepatches, plants): # system = plants or ice
             if r.state != "Ice":
                 r.state = "Waiting"
     
-    # plants #
+    # calculate plant-robot assignment based on distance between robot and plant
     if (len(want_plant) > 0):
         matrix = []
         row = 0
@@ -180,8 +185,8 @@ def assignTargets(robots, icepatches, plants): # system = plants or ice
         
         m = Munkres()
         indexes = m.compute(matrix)
-        
         total = 0
+        # change object variables to match new assignments
         for row, column in indexes:
             want_plant[row].target = freeplant[column] 
             freeplant[column].available = False
@@ -191,18 +196,16 @@ def assignTargets(robots, icepatches, plants): # system = plants or ice
                 r.state = "Waiting"
     return
 
-def assignEntrances(robots, entrances): # system = plants or ice
-    ### assign targets using matrix calculations ###
-    # intial calculation of closest robot targets (minimal movement)
-    # use Hungarian algorithm (O(n^3)): uses cost matrix to maximize efficiency 
-    agents = []
-    targets = []
+### function: assignEntrances ###
+# Hungarian algorithm for assigning robots to entrances of base (did not integrate into assignTargets due to time constraints, needs rework)
+def assignEntrances(robots, entrances): 
+    agents = []      # robots
+    targets = []     # entrances
     for r in robots:
         agents.append(r)
     for e in entrances:
         targets.append(e)
     
-    # ice #
     if (len(agents) > 0):
         matrix = []
         row = 0
@@ -214,35 +217,39 @@ def assignEntrances(robots, entrances): # system = plants or ice
         
         m = Munkres()
         indexes = m.compute(matrix)
-        #print_matrix(matrix, msg='Lowest cost through this matrix:')
         total = 0
         for row, column in indexes:
             agents[row].target = targets[column] 
             targets[column].available = False
     return
 
+### function: resizeFSCRN ###
+# resize 640x480 pixel frame from .read to 1920x1080 with black background
 def resizeFSCRN(img):
-    #resize 640x480 image by factor of 1080/480
+    # resize 640x480 image by factor of 1080/480, resulting in 1440x1080
     img = cv2.resize(img, None, fx=round(WIN_FSCRN_HEIGHT/WIN_HEIGHT, 2), fy=round(WIN_FSCRN_HEIGHT/WIN_HEIGHT, 2))
 
-    # 3. Create a solid black canvas matching the screen size
+    # create 1920x1080 solid black canvas
     canvas = np.zeros((WIN_FSCRN_HEIGHT, WIN_FSCRN_WIDTH, 3), dtype=np.uint8)
 
-    # 4. Define the position (Y, X coordinates) where you want the top-left corner of the image
-    # Example: Positioning the image to be perfectly centered
+    # define coordinates where top left corner of the 1440x1080 image should go on the canvas
     y_offset = (WIN_FSCRN_HEIGHT - WIN_FSCRN_HEIGHT) // 2
     x_offset = (WIN_FSCRN_WIDTH - int(WIN_WIDTH*WIN_FSCRN_HEIGHT/WIN_HEIGHT)) // 2
 
-    # Ensure the image fits within the bounds of your canvas coordinates
+    # ensure the image fits within the canvas, if not crop the image
     y_end = min(y_offset + WIN_FSCRN_HEIGHT, WIN_FSCRN_HEIGHT)
     x_end = min(x_offset + int(WIN_WIDTH*WIN_FSCRN_HEIGHT/WIN_HEIGHT), WIN_FSCRN_WIDTH)
 
-    # 5. Copy the image onto the canvas 
+    # copy the image onto the canvas with cropping logic
     canvas[y_offset:y_end, x_offset:x_end] = img[:y_end-y_offset, :x_end-x_offset]
     return canvas
 
+### function: asyncDisplay ###
+# display method required for displaying .read image due to some incompatibilities with asyncio
+# returns "stop" signal, equivalent to OpenCV waitKey
 def asyncDisplay(window_name, frame):
     if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
+        # if displaying via HDMI, use OpenCV imshow
         if DISPLAY_SCALE == "fullscreen":
             cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
             cv2.setWindowProperty(window_name, cv2.WND_PROP_TOPMOST, 1)
@@ -250,6 +257,7 @@ def asyncDisplay(window_name, frame):
         cv2.imshow(window_name, frame)
         stop = cv2.waitKey(1) & 0xFF == ord('q')
     else:
+        # if displaying via ImageZMQ to computer
         reply = sender.send_image(jetson_name, frame)
         reply = reply.decode('utf-8')
         if reply == "STOP":
@@ -258,7 +266,9 @@ def asyncDisplay(window_name, frame):
             stop = False
     return stop
             
-### main ###
+### function: main ###
+# logic for the full performance
+# initialization --> loop 1 (plant-ice sequence) --> dust storm --> loop 2 --> end
 async def main():
     if ENABLE_SOUND == True:
         play_bg() ### start the background music
