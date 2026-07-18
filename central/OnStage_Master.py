@@ -270,10 +270,12 @@ def asyncDisplay(window_name, frame):
 # logic for the full performance
 # initialization --> loop 1 (plant-ice sequence) --> dust storm --> loop 2 --> end
 async def main():
+    ### initialization ###
+    # start background music
     if ENABLE_SOUND == True:
-        play_bg() ### start the background music
+        play_bg()
     
-    ### position camera ###
+    # setup period, show camera feed to position camera properly
     while True:
         ret, frame = cam.read()
         if not ret:
@@ -298,7 +300,7 @@ async def main():
     if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
         cv2.destroyAllWindows()
     
-    ### initialize wifi ###
+    # initialize wifi
     if ENABLE_WIFI == True:
         for robot in robots:
             robot.reader, robot.writer = await wifi_connect(robot.IP, robot.port)
@@ -309,8 +311,8 @@ async def main():
         if base is not None:
             base.reader, base.writer = await wifi_connect(base.IP, base.port)
             
-    ### initialize tags/positions ###
-    # anchors
+    # initialize positions of component AprilTags
+    # anchor AprilTags
     while (res := initAnchors(cam, anchors))[0] != 1:
         for i in range(len(anchors)):
             print(f"Anchor {i}: {anchors[i].coords.x:.2f} {anchors[i].coords.y:.2f}") #testing#
@@ -332,7 +334,7 @@ async def main():
             if reply == "STOP":
                 break
     
-    # plants, ice, robots
+    # plant AprilTags
     while(res := updTagPos(cam, plants, anchors))[0] != 1:
         for plant in plants:
             print(f"Plant AT{plant.tag}: {plant.coords.x:.2f} {plant.coords.y:.2f}") #testing#
@@ -352,7 +354,7 @@ async def main():
             reply = reply.decode('utf-8')
             if reply == "STOP":
                 break
-            
+    # ice AprilTags
     while(res := updTagPos(cam, icepatches, anchors))[0] != 1:
         for ice in icepatches:
             print(f"Ice AT{ice.tag}: {ice.coords.x:.2f} {ice.coords.y:.2f}")
@@ -372,7 +374,7 @@ async def main():
             reply = reply.decode('utf-8')
             if reply == "STOP":
                 break
-            
+    # robot AprilTags
     while(res := updTagPos(cam, robots, anchors))[0] != 1:
         for robot in robots:
             print(f"Robot AT{robot.tag}: {robot.coords.x:.2f} {robot.coords.y:.2f}") #testing#
@@ -392,7 +394,7 @@ async def main():
             reply = reply.decode('utf-8')
             if reply == "STOP":
                 break
-            
+    # base entrance AprilTags
     if base is not None:
         while(res := updBasePos(cam, base, anchors))[0] != 1:
             print(f"Base AT{base.tag}: {base.coords.x:.2f} {base.coords.y:.2f}") #testing#
@@ -413,7 +415,7 @@ async def main():
                 if reply == "STOP":
                     break
 
-    # obstacles
+    # initialize obstacle borders using Canny Edge Detection
     while (res := updObsPos(cam, obstacles, anchors))[0] != 1:
         img = res[1]
         if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
@@ -425,16 +427,18 @@ async def main():
             reply = reply.decode('utf-8')
             if reply == "STOP":
                 break
-    
+    # remove extraneous obstacles
     i = 0
     for r in robots:
         i = 0
         while (i < len(obstacles)):
+            # remove boundary of the robots
             if obstacles[i].coords.distance_to(r.coords) < 0.6:
                 obstacles.pop(i)
             else:
                 i = i + 1
-                
+
+    # reset state of all field elements (plant.reset() is currently not functional)
     for ice in icepatches:
         await ice.reset()
     for plant in plants:
@@ -444,23 +448,27 @@ async def main():
     
     if ("imshow".casefold() in DISPLAY_TYPE.casefold()) or ("local".casefold() in DISPLAY_TYPE.casefold()) or ("hdmi".casefold() in DISPLAY_TYPE.casefold()):
         cv2.destroyAllWindows()
+    # start performance
     input("Press Enter to start: ")
-    
+
+    # assign initial targets to robots
     assignTargets(robots, icepatches, plants)
-    
+    # setup asyncio camera loop
     loop = asyncio.get_running_loop()
     window_name = "Camera Display"
-    
     start_time = time.perf_counter()
     
     ### loop 1 ###
+    # runs for the duration of DUSTSTORM_ACTIVATION_TIME
     while True:
         current_time = time.perf_counter()
         if (current_time - start_time > DUSTSTORM_ACTIVATION_TIME):
             break
-        
+
+        # update robot positions
         err, img = updTagPos(cam, robots, anchors)
-        
+
+        # check each robot
         for robot in robots:
             if robot.state == "None" or robot.state == "Waiting":
                 await robot.stop()
@@ -485,7 +493,8 @@ async def main():
                     robot.state = "None"
                     robot.target = None
                     assignTargets(robots, icepatches, plants)
-        
+
+        # display camera feed with field element info
         if (err != -1 and not ("none".casefold() in DISPLAY_TYPE.casefold())):
             img = displayElements(img, anchors, robots, obstacles, base)
             if DISPLAY_SCALE == "fullscreen":
@@ -630,7 +639,8 @@ async def main():
         for robot in robots:
             await robot.end()
         await asyncio.sleep(1)
-    
+
+    # disconnect all wifi TCP connections
     for robot in robots:
         await wifi_disconnect(robot.writer)
     for ice in icepatches:
